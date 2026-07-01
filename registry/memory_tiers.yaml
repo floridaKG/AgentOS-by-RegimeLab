@@ -1,0 +1,38 @@
+# Memory Tiers Registry
+# Source of truth for the Agent OS memory stack.
+# Only tiers physically available in this distribution are listed.
+# Last rebuilt: 2026-06-25
+
+tiers:
+  # ── SHORT-TERM ────────────────────────────────────────────────
+  - id: short_term
+    layer: short-term
+    backend: SQLite + FTS5
+    path: $AGENT_OS_HOME/.local/state/agent-os/memory/short_term.sqlite
+    scope: operational events, packet outcomes, ephemeral observations
+    write_via: "memory-st write --intent LESSON --summary '...' --source-ref cli:..."
+    read_via: "memory-st query --text '...' --limit N"
+    status: core
+    notes: FTS5 full-text index. Created on first write. No external dependencies.
+
+  # ── LONG-TERM VECTOR ─────────────────────────────────────────
+  - id: pinecone
+    layer: long-term-vector
+    backend: Pinecone
+    path: "Pinecone agent-vault index (external service)"
+    scope: semantic vector search across lessons, stumbles, decisions
+    write_via: "memory-promote --id <record-id> --target vector"
+    read_via: "memory-lt search-vector --text '...'"
+    status: optional
+    notes: "Requires PINECONE_API_KEY and PINECONE_INDEX env vars. See memory/adapters/pinecone/ADAPTER.md"
+
+  # ── LONG-TERM GRAPH ──────────────────────────────────────────
+  - id: neo4j
+    layer: long-term-graph
+    backend: Neo4j
+    path: "Neo4j AuraDB graph (external service)"
+    scope: relationship-based memory queries, source lineage
+    write_via: "memory-promote --id <record-id> --target graph"
+    read_via: "memory-lt query-graph --label <label>"
+    status: optional
+    notes: "Requires NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD env vars. See memory/adapters/neo4j/ADAPTER.md"

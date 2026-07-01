@@ -1,0 +1,3 @@
+#!/bin/bash
+# memory-st — Short-term memory CLI wrapper for Agent OS
+exec /usr/bin/python3 "$(dirname "$(dirname "$(readlink -f "$0")")")/memory/core/short_term.py" "$@"

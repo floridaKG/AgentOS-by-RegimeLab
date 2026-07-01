@@ -1,0 +1,23 @@
+# User-editable friendly aliases for MOE inline members.
+# Replace these values with model IDs advertised by your installed providers.
+
+[alias.claude]
+"default" = "default"
+"sonnet" = "sonnet"
+"opus" = "opus"
+
+[alias.codex]
+"default" = "default"
+
+[alias.opencode]
+"default" = "default"
+
+[alias.pi]
+"default" = "default"
+
+[effort]
+"low" = "low"
+"med" = "medium"
+"medium" = "medium"
+"high" = "high"
+"xhigh" = "xhigh"

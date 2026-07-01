@@ -1,0 +1,3 @@
+#!/bin/bash
+# memory-recall — Canonical programmatic recall facade for Agent OS
+exec /usr/bin/python3 "$(dirname "$(dirname "$(readlink -f "$0")")")/scripts/memory-recall-safe.py" --canonical-name memory-recall "$@"

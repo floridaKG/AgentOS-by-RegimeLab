@@ -1,0 +1,3 @@
+#!/bin/bash
+# memory-recall-safe — compatibility facade for fallback-safe recall
+exec /usr/bin/python3 "$(dirname "$(dirname "$(readlink -f "$0")")")/scripts/memory-recall-safe.py" "$@"

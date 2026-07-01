@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+#
+# acp-health — ACP daemon health check
+#
+# Checks:
+#   - Daemon PID file exists and process is running
+#   - Inbox backlog count
+#   - Dead letters count
+#
+# Exits 0 if healthy, non-zero if issues.
+#
+# Usage:
+#   acp-health              # Human-readable output
+#   acp-health --json       # JSON output
+#
+
+set -euo pipefail
+
+# ── Resolve AGENT_OS_HOME ──────────────────────────────────────────────
+AGENT_OS_HOME="${AGENT_OS_HOME:-}"
+if [[ -z "$AGENT_OS_HOME" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+    if [[ -f "$SCRIPT_DIR/AGENTS.md" ]]; then
+        AGENT_OS_HOME="$SCRIPT_DIR"
+    elif [[ -d "$SCRIPT_DIR/.config/agent-workflows" ]]; then
+        AGENT_OS_HOME="$SCRIPT_DIR"
+    else
+        AGENT_OS_HOME="$HOME/agent-os"
+    fi
+fi
+
+ACP_ROOT="$AGENT_OS_HOME/.local/state/agent-os/acp"
+PID_FILE="$ACP_ROOT/logs/daemon.pid"
+INBOX_BASE="$ACP_ROOT/inboxes/workspaces"
+DEAD_LETTER_DIR="$ACP_ROOT/dead_letters"
+LOG_FILE="$ACP_ROOT/logs/daemon.log"
+
+DAEMON_ALIVE=false
+INBOX_COUNT=0
+DEAD_COUNT=0
+LOG_AGE=0
+ISSUES=0
+
+# ── Check daemon alive ──────────────────────────────────────────────────
+if [[ -f "$PID_FILE" ]]; then
+    PID=$(cat "$PID_FILE" 2>/dev/null || echo "")
+    if [[ -n "$PID" ]] && kill -0 "$PID" 2>/dev/null; then
+        DAEMON_ALIVE=true
+    fi
+fi
+
+# ── Count inbox messages ────────────────────────────────────────────────
+if [[ -d "$INBOX_BASE" ]]; then
+    INBOX_COUNT=$(find "$INBOX_BASE" -name '*.json' -type f 2>/dev/null | wc -l)
+fi
+
+# ── Count dead letters ──────────────────────────────────────────────────
+if [[ -d "$DEAD_LETTER_DIR" ]]; then
+    DEAD_COUNT=$(find "$DEAD_LETTER_DIR" -name '*.json' -type f 2>/dev/null | wc -l)
+fi
+
+# ── Check log freshness ─────────────────────────────────────────────────
+if [[ -f "$LOG_FILE" ]]; then
+    NOW=$(date +%s)
+    LOG_MTIME=$(stat -c %Y "$LOG_FILE" 2>/dev/null || echo "0")
+    LOG_AGE=$((NOW - LOG_MTIME))
+fi
+
+# ── Determine health ────────────────────────────────────────────────────
+$DAEMON_ALIVE || ISSUES=$((ISSUES + 1))
+[[ $DEAD_COUNT -gt 5 ]] && ISSUES=$((ISSUES + 1))
+[[ $LOG_AGE -gt 300 ]] && ISSUES=$((ISSUES + 1))
+
+# ── Output ──────────────────────────────────────────────────────────────
+if [[ "${1:-}" == "--json" ]]; then
+    cat <<EOF
+{
+  "daemon_alive": $($DAEMON_ALIVE && echo "true" || echo "false"),
+  "pid": "${PID:-null}",
+  "inbox_messages": $INBOX_COUNT,
+  "dead_letters": $DEAD_COUNT,
+  "log_age_seconds": $LOG_AGE,
+  "log_file": "$LOG_FILE",
+  "healthy": $([ $ISSUES -eq 0 ] && echo "true" || echo "false"),
+  "issues": $ISSUES
+}
+EOF
+else
+    echo "ACP Health Check"
+    echo "━━━━━━━━━━━━━━━"
+    if $DAEMON_ALIVE; then
+        echo -e "  Daemon:       \033[32malive\033[0m (PID $PID)"
+    else
+        echo -e "  Daemon:       \033[31mnot running\033[0m"
+    fi
+    echo "  Inbox msgs:   $INBOX_COUNT"
+    echo "  Dead letters: $DEAD_COUNT"
+    echo "  Log age:      ${LOG_AGE}s"
+    echo ""
+    if [[ $ISSUES -eq 0 ]]; then
+        echo -e "\033[32m✓ Healthy\033[0m"
+    else
+        echo -e "\033[31m✗ Issues detected ($ISSUES)\033[0m"
+    fi
+fi
+
+exit $ISSUES

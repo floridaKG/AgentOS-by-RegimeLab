@@ -1,0 +1,246 @@
+#!/usr/bin/env python3
+"""memory-lt — optional long-term memory facade for public Agent OS.
+
+The open-core install must never crash when optional services are absent.
+This facade returns structured JSON for Pinecone and Neo4j operations so
+recall can degrade to local SQLite cleanly.
+"""
+
+import argparse
+import json
+import os
+import sys
+
+
+def _print(payload, code=0):
+    print(json.dumps(payload))
+    return code
+
+
+def _missing(service, env_vars):
+    return _print(
+        {
+            "ok": False,
+            "error": f"{service} is not configured",
+            "missing_env": [name for name in env_vars if not os.environ.get(name)],
+            "results": [],
+        },
+        1,
+    )
+
+
+def cmd_search_vector(args):
+    if not os.environ.get("PINECONE_API_KEY"):
+        return _missing("Pinecone", ["PINECONE_API_KEY"])
+    try:
+        from pinecone import Pinecone
+    except Exception as exc:
+        return _print({"ok": False, "error": f"pinecone SDK unavailable: {exc}", "results": []}, 1)
+
+    index_name = os.environ.get("PINECONE_INDEX", "agent-vault")
+    try:
+        pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"], source_tag="agent_os_public")
+        index = pc.Index(index_name)
+        query = {
+            "inputs": {"text": args.text},
+            "top_k": args.limit,
+        }
+        if args.namespace and args.namespace != "all":
+            query["namespace"] = args.namespace
+        raw = index.search(**query)
+    except TypeError:
+        return _print(
+            {
+                "ok": False,
+                "error": "Pinecone SDK does not support integrated-embedding search with this index/client",
+                "results": [],
+            },
+            1,
+        )
+    except Exception as exc:
+        return _print({"ok": False, "error": f"Pinecone search failed: {exc}", "results": []}, 1)
+
+    matches = raw.get("result", {}).get("hits", []) if isinstance(raw, dict) else []
+    results = []
+    for hit in matches:
+        fields = hit.get("fields", {}) if isinstance(hit, dict) else {}
+        results.append(
+            {
+                "id": hit.get("_id") or hit.get("id"),
+                "namespace": args.namespace,
+                "score": hit.get("_score") or hit.get("score", 0),
+                "summary": fields.get("summary") or fields.get("text") or "",
+                "source_path": fields.get("source_path") or fields.get("source_ref"),
+            }
+        )
+    return _print({"ok": True, "action": "search-vector", "results": results, "result_count": len(results)})
+
+
+def cmd_upsert_vector(args):
+    if not os.environ.get("PINECONE_API_KEY"):
+        return _missing("Pinecone", ["PINECONE_API_KEY"])
+    try:
+        from pinecone import Pinecone
+    except Exception as exc:
+        return _print({"ok": False, "error": f"pinecone SDK unavailable: {exc}"}, 1)
+    try:
+        with open(args.json_file, "r", encoding="utf-8") as f:
+            record = json.load(f)
+    except Exception as exc:
+        return _print({"ok": False, "error": f"cannot read vector JSON: {exc}"}, 1)
+
+    record_id = record.get("_id") or record.get("id")
+    text = record.get("chunk_text") or record.get("text") or record.get("summary")
+    if not record_id or not text:
+        return _print({"ok": False, "error": "vector record requires _id/id and chunk_text/text/summary"}, 1)
+
+    fields = dict(record)
+    fields["_id"] = record_id
+    fields["chunk_text"] = text
+    index_name = os.environ.get("PINECONE_INDEX", "agent-vault")
+    namespace = args.namespace or record.get("namespace") or "agent-os-docs"
+    try:
+        pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"], source_tag="agent_os_public")
+        index = pc.Index(index_name)
+        if hasattr(index, "upsert_records"):
+            index.upsert_records(namespace, [fields])
+        else:
+            return _print(
+                {
+                    "ok": False,
+                    "error": "Pinecone client/index does not expose upsert_records for integrated embedding",
+                },
+                1,
+            )
+    except Exception as exc:
+        return _print({"ok": False, "error": f"Pinecone upsert failed: {exc}"}, 1)
+    return _print({"ok": True, "action": "upsert-vector", "namespace": namespace, "id": record_id})
+
+
+def cmd_query_graph(args):
+    needed = ["NEO4J_URI", "NEO4J_USER", "NEO4J_PASSWORD"]
+    if any(not os.environ.get(name) for name in needed):
+        return _missing("Neo4j", needed)
+    try:
+        from neo4j import GraphDatabase
+    except Exception as exc:
+        return _print({"ok": False, "error": f"neo4j SDK unavailable: {exc}", "results": []}, 1)
+
+    try:
+        driver = GraphDatabase.driver(
+            os.environ["NEO4J_URI"],
+            auth=(os.environ["NEO4J_USER"], os.environ["NEO4J_PASSWORD"]),
+        )
+        with driver.session() as session:
+            rows = session.run(
+                """
+                MATCH (n)
+                WHERE toLower(coalesce(n.summary, n.name, n.text, '')) CONTAINS toLower($text)
+                RETURN coalesce(n.id, elementId(n)) AS id,
+                       coalesce(n.summary, n.name, n.text, '') AS summary,
+                       coalesce(n.source_ref, n.source_path, '') AS source_ref,
+                       labels(n) AS labels
+                LIMIT $limit
+                """,
+                text=args.text,
+                limit=args.limit,
+            )
+            results = [
+                {
+                    "id": row["id"],
+                    "summary": row["summary"],
+                    "source_ref": row["source_ref"],
+                    "tags": row["labels"],
+                    "workspace": args.workspace,
+                }
+                for row in rows
+            ]
+        driver.close()
+    except Exception as exc:
+        return _print({"ok": False, "error": f"Neo4j query failed: {exc}", "results": []}, 1)
+    return _print({"ok": True, "action": "query-graph", "results": results, "result_count": len(results)})
+
+
+def cmd_put_graph(args):
+    needed = ["NEO4J_URI", "NEO4J_USER", "NEO4J_PASSWORD"]
+    if any(not os.environ.get(name) for name in needed):
+        return _missing("Neo4j", needed)
+    try:
+        from neo4j import GraphDatabase
+    except Exception as exc:
+        return _print({"ok": False, "error": f"neo4j SDK unavailable: {exc}"}, 1)
+    try:
+        with open(args.json_file, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+    except Exception as exc:
+        return _print({"ok": False, "error": f"cannot read graph JSON: {exc}"}, 1)
+
+    graph_id = payload.get("id")
+    if not graph_id:
+        return _print({"ok": False, "error": "graph payload requires id"}, 1)
+    labels = {
+        "lesson": "Lesson",
+        "stumble": "Stumble",
+        "verification": "Verification",
+        "help_resolution": "HelpResolution",
+        "memory": "Memory",
+    }
+    label = labels.get(args.type, "Memory")
+    props = dict(payload)
+    props["type"] = args.type
+    try:
+        driver = GraphDatabase.driver(
+            os.environ["NEO4J_URI"],
+            auth=(os.environ["NEO4J_USER"], os.environ["NEO4J_PASSWORD"]),
+        )
+        with driver.session() as session:
+            session.run(
+                f"""
+                MERGE (n:{label} {{id: $id}})
+                SET n += $props
+                RETURN n.id AS id
+                """,
+                id=graph_id,
+                props=props,
+            )
+        driver.close()
+    except Exception as exc:
+        return _print({"ok": False, "error": f"Neo4j write failed: {exc}"}, 1)
+    return _print({"ok": True, "action": "put-graph", "id": graph_id, "type": args.type})
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="memory-lt")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    search = sub.add_parser("search-vector")
+    search.add_argument("--text", required=True)
+    search.add_argument("--namespace", default="all")
+    search.add_argument("--limit", type=int, default=10)
+    search.add_argument("--scope")
+    search.add_argument("--boundary-filter")
+    search.add_argument("--rerank", action="store_true")
+    search.set_defaults(func=cmd_search_vector)
+
+    upsert = sub.add_parser("upsert-vector")
+    upsert.add_argument("--namespace", default=None)
+    upsert.add_argument("--json-file", required=True)
+    upsert.set_defaults(func=cmd_upsert_vector)
+
+    graph = sub.add_parser("query-graph")
+    graph.add_argument("--text", required=True)
+    graph.add_argument("--limit", type=int, default=10)
+    graph.add_argument("--workspace", default="any")
+    graph.set_defaults(func=cmd_query_graph)
+
+    put = sub.add_parser("put-graph")
+    put.add_argument("--type", required=True)
+    put.add_argument("--json-file", required=True)
+    put.set_defaults(func=cmd_put_graph)
+
+    args = parser.parse_args()
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,61 @@
+# Public Agent OS hard rules.
+# Machine-readable enforced rules for Agent OS.
+# Last rebuilt: 2026-06-25
+#
+# Schema:
+#   id           - stable unique slug
+#   rule         - plain text prohibition or directive
+#   rationale    - why this rule exists
+#   scope        - list of affected workspaces (or "all")
+#   severity     - blocking | warning | suggestion
+#   status       - active | draft | deprecated
+
+rules:
+  - id: no_secrets_in_repos
+    rule: "Never commit API keys, credentials, or secrets to version control."
+    rationale: Prevent credential exposure and unauthorized access.
+    scope: [all]
+    severity: blocking
+    status: active
+
+  - id: no_rm
+    rule: "Never use rm, rmdir, or shred. Use write-to-tmp and rename instead."
+    rationale: Preserve evidence and enable rollback.
+    scope: [all]
+    severity: blocking
+    status: active
+
+  - id: absolute_paths
+    rule: "Use absolute paths only. Never use ~ in scripts or configs."
+    rationale: Prevent ambiguity in multi-user and CI environments.
+    scope: [all]
+    severity: blocking
+    status: active
+
+  - id: verify_before_trusting
+    rule: "Verify factual claims about the system against live state before acting."
+    rationale: Prevent acting on stale documentation.
+    scope: [all]
+    severity: warning
+    status: active
+
+  - id: simplicity_first
+    rule: "Minimum code that solves the problem. No speculative features."
+    rationale: Prevent over-engineering and maintenance burden.
+    scope: [all]
+    severity: suggestion
+    status: active
+
+  - id: no_git_for_acp
+    rule: "ACP-dispatched workers must not git add, commit, push, checkout, reset, stash, or branch."
+    rationale: Prevent autonomous agents from modifying version control state.
+    scope: [all]
+    severity: blocking
+    status: active
+
+  - id: idempotent_installs
+    rule: "Installation scripts must be idempotent and non-destructive."
+    rationale: Prevent state corruption from repeated runs.
+    scope: [all]
+    severity: blocking
+    status: active

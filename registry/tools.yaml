@@ -1,0 +1,129 @@
+# Public Agent OS tools registry.
+# Only tools physically included in this distribution may be listed here.
+# Last rebuilt: 2026-06-25
+
+tools:
+  - id: skill-rank
+    binary: $AGENT_OS_HOME/scripts/skill-rank
+    purpose: Rank skills by relevance to a task query
+    invocation: skill-rank "<task description>" --top 3
+
+  - id: skill-pack
+    binary: $AGENT_OS_HOME/scripts/skill-pack
+    purpose: Extract bounded context packs from large skill files
+    invocation: skill-pack <skill-name> --budget 4000
+
+  - id: context-pack
+    binary: $AGENT_OS_HOME/scripts/context-pack.sh
+    purpose: Bundle memory and skill context for agent handoffs
+    invocation: context-pack "<query>"
+
+  - id: recall
+    binary: $AGENT_OS_HOME/scripts/recall.sh
+    purpose: Search across configured memory tiers
+    invocation: recall "<query>"
+
+  - id: registry-check
+    binary: $AGENT_OS_HOME/scripts/registry-check.py
+    purpose: Validate registry consistency and path resolution
+    invocation: python3 $AGENT_OS_HOME/scripts/registry-check.py
+
+  - id: hard-rule-smoke
+    binary: $AGENT_OS_HOME/scripts/hard-rule-smoke.sh
+    purpose: Smoke-test hard rules enforcement
+    invocation: bash $AGENT_OS_HOME/scripts/hard-rule-smoke.sh
+
+  - id: sync-check
+    binary: $AGENT_OS_HOME/scripts/sync-check.sh
+    purpose: Check file sync status
+    invocation: bash $AGENT_OS_HOME/scripts/sync-check.sh
+
+  - id: build-manifest
+    binary: $AGENT_OS_HOME/scripts/build-manifest.py
+    purpose: Build export manifest from current state
+    invocation: python3 $AGENT_OS_HOME/scripts/build-manifest.py
+
+  - id: build-skills-repo
+    binary: $AGENT_OS_HOME/scripts/build-skills-repo.sh
+    purpose: Build skills repository structure
+    invocation: bash $AGENT_OS_HOME/scripts/build-skills-repo.sh
+
+  - id: agent-os-health
+    binary: $AGENT_OS_HOME/scripts/agent-os-health.sh
+    purpose: Run Agent OS health checks
+    invocation: bash $AGENT_OS_HOME/scripts/agent-os-health.sh
+
+  - id: agent-os-verify
+    binary: $AGENT_OS_HOME/scripts/agent-os-verify.sh
+    purpose: Verify Agent OS installation integrity
+    invocation: bash $AGENT_OS_HOME/scripts/agent-os-verify.sh
+
+  - id: agent-os-boot
+    binary: $AGENT_OS_HOME/scripts/agent-os-boot.sh
+    purpose: Bootstrap Agent OS session
+    invocation: bash $AGENT_OS_HOME/scripts/agent-os-boot.sh
+
+  - id: memory-st
+    binary: $AGENT_OS_HOME/bin/memory-st
+    purpose: Short-term memory operations (write, query, list)
+    invocation: memory-st write --intent LESSON --summary "..." --source-ref cli:...
+
+  - id: memory-lt
+    binary: $AGENT_OS_HOME/bin/memory-lt
+    purpose: Long-term memory operations (search, promote)
+    invocation: memory-lt search-vector --text "..."
+
+  - id: memory-recall
+    binary: $AGENT_OS_HOME/bin/memory-recall
+    purpose: Cross-tier memory search
+    invocation: memory-recall "<query>"
+
+  - id: memory-recall-safe
+    binary: $AGENT_OS_HOME/bin/memory-recall-safe
+    purpose: Fallback-safe cross-tier memory search used by hooks and integrations
+    invocation: memory-recall-safe --text "<query>"
+
+  - id: memory-inject
+    binary: $AGENT_OS_HOME/bin/memory-inject
+    purpose: Inject memories into agent context
+    invocation: memory-inject --packet <packet.json> --dry-run
+
+  - id: memory-promote
+    binary: $AGENT_OS_HOME/bin/memory-promote
+    purpose: Promote short-term records to long-term storage
+    invocation: memory-promote --id <record-id> --target auto
+
+  - id: agent-voice
+    binary: $AGENT_OS_HOME/bin/agent-voice
+    purpose: Capture agent friction, improvement ideas, and risks
+    invocation: agent-voice emit --kind friction --statement "..."
+
+  - id: team
+    binary: $AGENT_OS_HOME/bin/team
+    purpose: Run MOE and multi-provider agent panels
+    invocation: team fire --tier 2 --members "claude default, codex default" --task "..."
+
+  - id: agent-workflow
+    binary: $AGENT_OS_HOME/bin/agent-workflow
+    purpose: Run swarm, council, dialogue, red-team, escalation, and orchestration workflows
+    invocation: agent-workflow swarm <task-file> 3
+
+  - id: log-stumble
+    binary: $AGENT_OS_HOME/bin/log-stumble
+    purpose: Record agent stumbles to short-term memory
+    invocation: log-stumble <workspace> "<summary>" [--source-ref <ref>] [--content <text>]
+
+  - id: stumble-triage
+    binary: $AGENT_OS_HOME/bin/stumble-triage
+    purpose: Deduplicate and cluster stumble records into a triage report
+    invocation: stumble-triage
+
+  - id: stumble-review
+    binary: $AGENT_OS_HOME/bin/stumble-review
+    purpose: Review triaged stumble clusters and decide fix|guardrail|document|ignore
+    invocation: stumble-review list  ;  stumble-review decide <fingerprint> fix
+
+  - id: stumble-cleanup
+    binary: $AGENT_OS_HOME/bin/stumble-cleanup
+    purpose: Clean old triage reports and check resolution status
+    invocation: stumble-cleanup

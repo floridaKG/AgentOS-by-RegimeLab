@@ -1,0 +1,245 @@
+#!/usr/bin/env bash
+#
+# agent-mail — Inter-agent async messaging tool
+#
+# A simple file-based messaging system for agents to send async messages.
+# Messages are stored as JSON files in the agent-mail directory.
+#
+# Usage:
+#   agent-mail send <agent> <subject> [--summary "..."] [--body "..."]
+#   agent-mail inbox [--agent <name>]
+#   agent-mail read <message-id>
+#
+# Supported agents: claude, codex, opencode, droid
+#
+
+set -euo pipefail
+
+# ── Resolve AGENT_OS_HOME ──────────────────────────────────────────────
+AGENT_OS_HOME="${AGENT_OS_HOME:-}"
+if [[ -z "$AGENT_OS_HOME" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+    if [[ -f "$SCRIPT_DIR/AGENTS.md" ]]; then
+        AGENT_OS_HOME="$SCRIPT_DIR"
+    elif [[ -d "$SCRIPT_DIR/.config/agent-workflows" ]]; then
+        AGENT_OS_HOME="$SCRIPT_DIR"
+    else
+        AGENT_OS_HOME="$HOME/agent-os"
+    fi
+fi
+
+MAIL_DIR="$AGENT_OS_HOME/.local/state/agent-os/agent-mail"
+SUPPORTED_AGENTS=("claude" "codex" "opencode" "droid")
+
+mkdir -p "$MAIL_DIR"
+
+# ── Helpers ─────────────────────────────────────────────────────────────
+die() { echo "Error: $*" >&2; exit 1; }
+usage() {
+    cat >&2 <<EOF
+Usage: agent-mail <command> [args]
+
+Commands:
+  send <agent> <subject>
+    [--summary "..."] [--body "..."]
+  inbox [--agent <name>]
+  read <message-id>
+
+Supported agents: ${SUPPORTED_AGENTS[*]}
+EOF
+    exit 1
+}
+
+# ── Generate message ID ────────────────────────────────────────────────
+generate_id() {
+    local ts
+    ts=$(date +%s)
+    local rand
+    rand=$(head -c 4 /dev/urandom | xxd -p 2>/dev/null || echo "$$")
+    echo "msg-${ts}-${rand}"
+}
+
+# ── Send a message ─────────────────────────────────────────────────────
+cmd_send() {
+    local agent="$1"
+    local subject="$2"
+    shift 2
+
+    local summary=""
+    local body=""
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --summary) summary="$2"; shift 2 ;;
+            --body)    body="$2"; shift 2 ;;
+            *)         die "Unknown option: $1" ;;
+        esac
+    done
+
+    # Validate agent
+    local valid=false
+    for a in "${SUPPORTED_AGENTS[@]}"; do [[ "$agent" == "$a" ]] && valid=true && break; done
+    $valid || die "Unsupported agent '$agent'. Supported: ${SUPPORTED_AGENTS[*]}"
+
+    local msg_id
+    msg_id=$(generate_id)
+    local ts
+    ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    local sender="${AGENT:-unknown}"
+
+    cat > "$MAIL_DIR/$msg_id.json" <<EOF
+{
+  "id": "$msg_id",
+  "type": "message",
+  "sender": "$sender",
+  "recipient": "$agent",
+  "subject": $(echo "$subject" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read().strip()))" 2>/dev/null || echo "\"$subject\""),
+  "summary": $(echo "$summary" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read().strip()))" 2>/dev/null || echo "\"$summary\""),
+  "body": $(echo "$body" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read().strip()))" 2>/dev/null || echo "\"$body\""),
+  "created_at": "$ts",
+  "read": false
+}
+EOF
+
+    echo "Message sent: $msg_id → $agent"
+    echo "  Subject: $subject"
+}
+
+# ── List inbox ─────────────────────────────────────────────────────────
+cmd_inbox() {
+    local filter_agent=""
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --agent) filter_agent="$2"; shift 2 ;;
+            *)       die "Unknown option: $1" ;;
+        esac
+    done
+
+    local msgs
+    msgs=$(find "$MAIL_DIR" -name '*.json' -type f 2>/dev/null | sort -t- -k2 -rn | head -50)
+
+    if [[ -z "$msgs" ]]; then
+        echo "Inbox empty."
+        return
+    fi
+
+    echo "Agent Mail — Inbox"
+    echo "━━━━━━━━━━━━━━━━━━"
+
+    local count=0
+    while IFS= read -r fpath; do
+        local msg_id
+        msg_id=$(basename "$fpath" .json)
+        local recipient subject summary created read_flag
+
+        # Parse JSON fields safely
+        if command -v python3 &>/dev/null; then
+            local json
+            json=$(cat "$fpath")
+            recipient=$(echo "$json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('recipient','?'))" 2>/dev/null || echo "?")
+            subject=$(echo "$json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('subject','?'))" 2>/dev/null || echo "?")
+            summary=$(echo "$json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('summary',''))" 2>/dev/null || echo "")
+            created=$(echo "$json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('created_at','?'))" 2>/dev/null || echo "?")
+            local is_read
+            is_read=$(echo "$json" | python3 -c "import sys,json; print(json.load(sys.stdin).get('read',False))" 2>/dev/null || echo "false")
+        else
+            # Fallback grep-based parsing
+            recipient=$(grep -o '"recipient": *"[^"]*"' "$fpath" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+            subject=$(grep -o '"subject": *"[^"]*"' "$fpath" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+            summary=$(grep -o '"summary": *"[^"]*"' "$fpath" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+            created=$(grep -o '"created_at": *"[^"]*"' "$fpath" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+            local is_read="false"
+            grep -q '"read": *true' "$fpath" && is_read="true"
+        fi
+
+        # Apply agent filter
+        [[ -n "$filter_agent" && "$recipient" != "$filter_agent" ]] && continue
+
+        read_flag=" "
+        [[ "$is_read" == "false" ]] && read_flag="*"
+
+        count=$((count + 1))
+        if [[ -n "$summary" ]]; then
+            printf "  %s %-30s %-20s %s\n" "$read_flag" "$msg_id" "[→ $recipient]" "${subject:0:50}"
+        else
+            printf "  %s %-30s %-20s %s\n" "$read_flag" "$msg_id" "[→ $recipient]" "${subject:0:50}"
+        fi
+    done <<< "$msgs"
+
+    if [[ $count -eq 0 ]]; then
+        echo "No matching messages."
+    else
+        echo ""
+        echo "  * = unread"
+    fi
+}
+
+# ── Read a message ─────────────────────────────────────────────────────
+cmd_read() {
+    local msg_id="$1"
+    local fpath="$MAIL_DIR/$msg_id.json"
+
+    if [[ ! -f "$fpath" ]]; then
+        die "Message not found: $msg_id (looked at $fpath)"
+    fi
+
+    # Mark as read
+    if command -v python3 &>/dev/null; then
+        python3 -c "
+import json
+path = '$fpath'
+with open(path, 'r') as f:
+    data = json.load(f)
+data['read'] = True
+data['read_at'] = '$(date -u +"%Y-%m-%dT%H:%M:%SZ")'
+with open(path, 'w') as f:
+    json.dump(data, f, indent=2)
+" 2>/dev/null || true
+    fi
+
+    # Display
+    if command -v python3 &>/dev/null; then
+        python3 -c "
+import json
+with open('$fpath') as f:
+    d = json.load(f)
+print('── Message ────────────────────────────────────')
+print(f\"  ID:        {d.get('id','?')}\")
+print(f\"  From:      {d.get('sender','?')}\")
+print(f\"  To:        {d.get('recipient','?')}\")
+print(f\"  Subject:   {d.get('subject','?')}\")
+print(f\"  Created:   {d.get('created_at','?')}\")
+print(f\"  Read:      {d.get('read',False)}\")
+summary = d.get('summary','')
+body = d.get('body','')
+if summary:
+    print(f\"  Summary:   {summary}\")
+print('────────────────────────────────────────────────')
+if body:
+    print(body)
+" 2>/dev/null
+    else
+        cat "$fpath"
+    fi
+}
+
+# ── Main dispatch ───────────────────────────────────────────────────────
+[[ $# -lt 1 ]] && usage
+
+COMMAND="$1"
+shift
+
+case "$COMMAND" in
+    send)
+        [[ $# -lt 2 ]] && die "Usage: agent-mail send <agent> <subject> [--summary ...] [--body ...]"
+        cmd_send "$@"
+        ;;
+    inbox)
+        cmd_inbox "$@"
+        ;;
+    read)
+        [[ $# -lt 1 ]] && die "Usage: agent-mail read <message-id>"
+        cmd_read "$1"
+        ;;
+    *) usage ;;
+esac

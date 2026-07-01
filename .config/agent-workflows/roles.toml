@@ -1,0 +1,48 @@
+# Portable agent workflow role assignments.
+# Replace provider/model values with IDs advertised by your installed CLIs.
+
+[explorer]
+model = "default"
+provider = "opencode"
+cost = "user-configured"
+
+[architect]
+model = "default"
+provider = "claude"
+cost = "user-configured"
+
+[executor]
+model = "default"
+provider = "codex"
+cost = "user-configured"
+
+[reviewer]
+model = "default"
+provider = "claude"
+cost = "user-configured"
+
+[code_reviewer]
+model = "default"
+provider = "codex"
+cost = "user-configured"
+
+[escalation]
+model = "default"
+provider = "claude"
+cost = "user-configured"
+
+[hard_escalation]
+model = "default"
+provider = "claude"
+cost = "user-configured"
+
+[cline]
+model = "default"
+provider = "cline"
+cost = "free"
+
+[workspaces]
+home = { path = "$AGENT_OS_HOME" }
+project-a = { path = "$HOME/projects/project-a" }
+project-b = { path = "$HOME/projects/project-b" }
+vault = { path = "$VAULT_PATH" }

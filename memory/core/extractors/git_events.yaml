@@ -1,0 +1,48 @@
+# Starter extractor: git events from terminal tool output.
+# Format: list of rules. Each rule produces 0..N facts when its regex matches
+# the tool result.
+#
+# Schema per rule:
+#   id:          unique slug
+#   when:        match conditions (all must hold)
+#     tool:       tool_name equals this (e.g. "terminal", "Bash")
+#     args_re:    optional regex on JSON-encoded args
+#     result_re:  optional regex on JSON-encoded result
+#   emit:
+#     intent:     ALLOWED_INTENT (OBSERVATION/LESSON/...)
+#     kind:       ALLOWED_KIND
+#     summary:    f-string using {match.group(N)} captures; truncated to 200 chars
+#     tags:       optional list of static tags
+
+rules:
+  - id: git-commit-created
+    when:
+      tool: terminal
+      args_re: "git\\s+commit"
+      result_re: "\\[(?P<branch>[^\\s\\]]+)\\s+(?P<sha>[0-9a-f]{7,})\\]"
+    emit:
+      intent: OBSERVATION
+      kind: observation
+      summary: "git commit {sha} on {branch}"
+      tags: ["git", "commit"]
+
+  - id: git-push-rejected
+    when:
+      tool: terminal
+      args_re: "git\\s+push"
+      result_re: "(rejected|non-fast-forward|failed to push)"
+    emit:
+      intent: STUMBLE
+      kind: stumble
+      summary: "git push rejected"
+      tags: ["git", "push-rejected"]
+
+  - id: pip-install-error
+    when:
+      tool: terminal
+      result_re: "ERROR: (Could not find a version|No matching distribution)"
+    emit:
+      intent: STUMBLE
+      kind: stumble
+      summary: "pip install failed: missing distribution"
+      tags: ["pip", "dependency"]

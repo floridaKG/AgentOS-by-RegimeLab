@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# spec-check — Validate a spec file has required frontmatter and sections
+# Referenced by AGENTS.md: "pass bin/spec-check"
+#
+# Usage: spec-check <path-to-md-file>
+# Exit 0 if valid, non-zero with specific reasons if invalid.
+
+set -euo pipefail
+
+# ── Help ──
+if [[ "${1:-}" == "--help" ]]; then
+  echo "Usage: spec-check <path-to-md-file>"
+  echo "Validates a spec markdown file has required YAML frontmatter and sections."
+  echo "Exit 0 if valid, non-zero with specific reasons if invalid."
+  exit 0
+fi
+
+if [[ $# -lt 1 ]]; then
+  echo "Usage: spec-check <path-to-md-file>"
+  echo "Validates a spec markdown file has required YAML frontmatter and sections."
+  echo "Exit 0 if valid, non-zero with specific reasons if invalid."
+  exit 1
+fi
+
+FILE="$1"
+
+if [[ ! -f "$FILE" ]]; then
+  echo "FAIL: File not found: $FILE"
+  exit 1
+fi
+
+ERRORS=0
+
+# ── Extract YAML frontmatter (between first two --- lines) ──
+FRONTMATTER="$(awk '/^---$/{c++;next}c==1' "$FILE")"
+
+if [[ -z "$FRONTMATTER" ]]; then
+  echo "FAIL: Missing YAML frontmatter (file must start with ---)"
+  ERRORS=$((ERRORS + 1))
+else
+  if ! echo "$FRONTMATTER" | grep -q '^title:'; then
+    echo "FAIL: Frontmatter missing 'title'"
+    ERRORS=$((ERRORS + 1))
+  fi
+  if ! echo "$FRONTMATTER" | grep -q '^status:'; then
+    echo "FAIL: Frontmatter missing 'status'"
+    ERRORS=$((ERRORS + 1))
+  fi
+  if ! echo "$FRONTMATTER" | grep -q '^created:'; then
+    echo "FAIL: Frontmatter missing 'created'"
+    ERRORS=$((ERRORS + 1))
+  fi
+fi
+
+# ── Extract body (content after frontmatter) ──
+BODY="$(awk '/^---$/{c++}c>=2' "$FILE")"
+
+# Check for Problem Statement or Purpose section
+if ! echo "$BODY" | grep -qiE '^##\s+(Problem Statement|Purpose)'; then
+  echo "FAIL: Missing required section: 'Problem Statement' or 'Purpose'"
+  ERRORS=$((ERRORS + 1))
+fi
+
+# Check for Verification, Testing, Validation, Acceptance, or Success Criteria section
+if ! echo "$BODY" | grep -qiE '^##\s+(Verification|Testing|Validation|Acceptance|Success Criteria)'; then
+  echo "FAIL: Missing required section: 'Verification', 'Testing', 'Validation', 'Acceptance', or 'Success Criteria'"
+  ERRORS=$((ERRORS + 1))
+fi
+
+# ── Result ──
+if [[ $ERRORS -eq 0 ]]; then
+  echo "PASS: $FILE has valid spec structure"
+  exit 0
+else
+  echo "FAIL: $FILE has $ERRORS issue(s)"
+  exit 1
+fi

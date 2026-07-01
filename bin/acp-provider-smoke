@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+#
+# acp-provider-smoke — Smoke test for all configured ACP providers
+#
+# Reads roles from roles.toml, dispatches a test prompt to each configured
+# provider, validates output, and reports pass/fail.
+#
+# Usage:
+#   acp-provider-smoke                    # Human-readable output
+#   acp-provider-smoke --timeout 150      # Custom timeout (default: 150s)
+#   acp-provider-smoke --json             # JSON results
+#
+
+set -euo pipefail
+
+# ── Resolve AGENT_OS_HOME ──────────────────────────────────────────────
+AGENT_OS_HOME="${AGENT_OS_HOME:-}"
+if [[ -z "$AGENT_OS_HOME" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+    if [[ -f "$SCRIPT_DIR/AGENTS.md" ]]; then
+        AGENT_OS_HOME="$SCRIPT_DIR"
+    elif [[ -d "$SCRIPT_DIR/.config/agent-workflows" ]]; then
+        AGENT_OS_HOME="$SCRIPT_DIR"
+    else
+        AGENT_OS_HOME="$HOME/agent-os"
+    fi
+fi
+
+ROLES_FILE="$AGENT_OS_HOME/.config/agent-workflows/roles.toml"
+SMOKE_DIR="$AGENT_OS_HOME/.local/state/agent-os/acp/smoke"
+ACP_TASK="$AGENT_OS_HOME/bin/acp-task"
+
+TIMEOUT=150
+JSON_OUT=false
+
+# ── Parse args ──────────────────────────────────────────────────────────
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --timeout) TIMEOUT="$2"; shift 2 ;;
+        --json)    JSON_OUT=true; shift ;;
+        --help)    echo "Usage: acp-provider-smoke [--timeout <sec>] [--json]"; exit 0 ;;
+        *)         echo "Unknown: $1" >&2; exit 1 ;;
+    esac
+done
+
+mkdir -p "$SMOKE_DIR"
+
+# ── Detect providers from roles ─────────────────────────────────────────
+declare -A PROVIDERS
+if [[ -f "$ROLES_FILE" ]]; then
+    # Parse roles.toml — extract unique agent names
+    while IFS='=' read -r key value; do
+        key="$(echo "$key" | xargs)"
+        value="$(echo "$value" | xargs)"
+        if [[ "$key" == "default" ]]; then
+            agent="$value"
+            if [[ -n "$agent" ]]; then
+                PROVIDERS["$agent"]=1
+            fi
+        fi
+    done < <(grep -A1 '^\[roles\.[a-z_]' "$ROLES_FILE" 2>/dev/null | grep 'default =')
+fi
+
+# Fallback if parsing failed
+if [[ ${#PROVIDERS[@]} -eq 0 ]]; then
+    PROVIDERS["opencode"]=1
+    PROVIDERS["codex"]=1
+    PROVIDERS["claude"]=1
+fi
+
+# ── Check acpx availability ────────────────────────────────────────────
+HAS_ACPX=false
+if command -v acpx &>/dev/null; then
+    HAS_ACPX=true
+fi
+
+# ── Run smoke tests ─────────────────────────────────────────────────────
+RESULTS=()
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+DATE_FILE=$(date +%Y-%m-%d)
+
+echo "ACP Provider Smoke Test ($TIMESTAMP)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+if ! $HAS_ACPX; then
+    echo -e "\033[33m⚠ acpx not found — running in detection-only mode\033[0m"
+    echo "  Install: npm install -g acpx"
+fi
+echo ""
+
+for AGENT in "${!PROVIDERS[@]}"; do
+    echo -n "  Testing provider: $AGENT ... "
+    START=$EPOCHSECONDS
+
+    if $HAS_ACPX; then
+        # Real smoke test via acpx
+        PROMPT="Hello from Agent OS smoke test at $TIMESTAMP. Respond with: 'ACK $AGENT smoke test passed' and nothing else."
+        OUTPUT=$(timeout "$TIMEOUT" acpx "$AGENT" exec - < <(echo "$PROMPT") 2>/dev/null || true)
+        ELAPSED=$((EPOCHSECONDS - START))
+
+        if echo "$OUTPUT" | grep -qi "ACK\|passed\|smoke\|hello"; then
+            echo -e "\033[32mPASS\033[0m (${ELAPSED}s)"
+            RESULTS+=("{\"agent\":\"$AGENT\",\"status\":\"pass\",\"elapsed\":$ELAPSED,\"output_preview\":\"${OUTPUT:0:200}\"}")
+        else
+            echo -e "\033[31mFAIL\033[0m (${ELAPSED}s)"
+            RESULTS+=("{\"agent\":\"$AGENT\",\"status\":\"fail\",\"elapsed\":$ELAPSED,\"output_preview\":\"${OUTPUT:0:200}\"}")
+        fi
+    else
+        # Dry-run mode — just test that acp-task can dispatch
+        echo -e "\033[33mSKIP\033[0m (acpx not available)"
+        RESULTS+=("{\"agent\":\"$AGENT\",\"status\":\"skip\",\"elapsed\":0,\"reason\":\"acpx not installed\"}")
+    fi
+done
+
+# ── Summary ─────────────────────────────────────────────────────────────
+PASS_COUNT=$(printf '%s\n' "${RESULTS[@]}" | grep -c '"pass"' || true)
+FAIL_COUNT=$(printf '%s\n' "${RESULTS[@]}" | grep -c '"fail"' || true)
+SKIP_COUNT=$(printf '%s\n' "${RESULTS[@]}" | grep -c '"skip"' || true)
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo -e "  Pass: $PASS_COUNT  Fail: $FAIL_COUNT  Skip: $SKIP_COUNT"
+
+# ── Save results ────────────────────────────────────────────────────────
+RESULTS_JSON="{\"timestamp\":\"$TIMESTAMP\",\"acpx_available\":$HAS_ACPX,\"timeout\":$TIMEOUT,\"results\":["
+FIRST=true
+for r in "${RESULTS[@]}"; do
+    $FIRST || RESULTS_JSON+=","
+    RESULTS_JSON+="$r"
+    FIRST=false
+done
+RESULTS_JSON+="]}"
+
+echo "$RESULTS_JSON" > "$SMOKE_DIR/$DATE_FILE.json"
+echo "  Results saved: $SMOKE_DIR/$DATE_FILE.json"
+
+# ── Exit code ──────────────────────────────────────────────────────────
+if $JSON_OUT; then
+    echo "$RESULTS_JSON"
+fi
+
+[[ $FAIL_COUNT -eq 0 ]] || exit 1

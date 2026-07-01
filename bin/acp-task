@@ -1,0 +1,229 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2317
+#
+# acp-task — ACP task dispatch CLI
+#
+# Usage:
+#   acp-task <role> <workspace> "<objective>" [--body "..."] [--wait] [--session <name>] [--json] [--no-memory]
+#
+# Examples:
+#   acp-task executor home "Summarize today's logs"
+#   acp-task explorer project-b "Find the API endpoint" --wait
+#   acp-task code_reviewer project-a "Review auth flow" --body "Focus on SQL injection" --json
+#
+
+set -euo pipefail
+
+# ── Resolve AGENT_OS_HOME ──────────────────────────────────────────────
+AGENT_OS_HOME="${AGENT_OS_HOME:-}"
+if [[ -z "$AGENT_OS_HOME" ]]; then
+    # Walk up from script dir to find root (look for known marker)
+    SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+    if [[ -f "$SCRIPT_DIR/AGENTS.md" ]]; then
+        AGENT_OS_HOME="$SCRIPT_DIR"
+    elif [[ -d "$SCRIPT_DIR/.config/agent-workflows" ]]; then
+        AGENT_OS_HOME="$SCRIPT_DIR"
+    else
+        AGENT_OS_HOME="$HOME/agent-os"
+    fi
+fi
+
+ROLES_FILE="$AGENT_OS_HOME/.config/agent-workflows/roles.toml"
+SEND_SCRIPT="$AGENT_OS_HOME/.config/agent-workflows/acp/acp_send.py"
+COMPLETION_SCRIPT="$AGENT_OS_HOME/.config/agent-workflows/acp/acp_completion.py"
+
+VALID_ROLES=("executor" "explorer" "architect" "reviewer" "code_reviewer" "escalation" "hard_escalation" "droid")
+VALID_WORKSPACES=("home" "project-a" "project-b" "vault")
+
+# ── Color helpers ───────────────────────────────────────────────────────
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
+die()   { echo -e "${RED}Error:${NC} $*" >&2; exit 1; }
+info()  { echo -e "${CYAN}$*${NC}"; }
+ok()    { echo -e "${GREEN}$*${NC}"; }
+warn()  { echo -e "${YELLOW}$*${NC}" >&2; }
+
+# ── Usage ───────────────────────────────────────────────────────────────
+usage() {
+    cat >&2 <<EOF
+Usage: acp-task <role> <workspace> "<objective>" [options]
+
+Arguments:
+  role          Agent role: ${VALID_ROLES[*]}
+  workspace     Target workspace: ${VALID_WORKSPACES[*]}
+  objective     One-line task description (quote it)
+
+Options:
+  --body "..."     Detailed task body / instructions
+  --wait           Block until completion and stream output
+  --session <name> Persistent named session (vs one-shot)
+  --json           Return structured JSON completion envelope
+  --no-memory      Skip memory context injection (default: on)
+  --help           Show this message
+
+Examples:
+  acp-task executor home "Summarize today's logs"
+  acp-task explorer project-b "Find the API endpoint" --wait
+  acp-task code_reviewer project-a "Review auth flow" --json
+EOF
+    exit 1
+}
+
+# ── Parse args ──────────────────────────────────────────────────────────
+if [[ $# -lt 3 ]]; then usage; fi
+
+ROLE="$1"; shift
+WORKSPACE="$1"; shift
+OBJECTIVE="$1"; shift
+
+BODY=""
+WAIT=false
+SESSION=""
+JSON=false
+WITH_MEMORY=true
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --body)     BODY="$2"; shift 2 ;;
+        --wait)     WAIT=true; shift ;;
+        --session)  SESSION="$2"; shift 2 ;;
+        --json)     JSON=true; shift ;;
+        --no-memory) WITH_MEMORY=false; shift ;;
+        --help)     usage ;;
+        *)          die "Unknown option: $1 (use --help)" ;;
+    esac
+done
+
+# ── Validate ────────────────────────────────────────────────────────────
+ROLE_OK=false
+for r in "${VALID_ROLES[@]}"; do [[ "$ROLE" == "$r" ]] && ROLE_OK=true && break; done
+$ROLE_OK || die "Invalid role '$ROLE'. Valid: ${VALID_ROLES[*]}"
+
+WS_OK=false
+for w in "${VALID_WORKSPACES[@]}"; do [[ "$WORKSPACE" == "$w" ]] && WS_OK=true && break; done
+$WS_OK || warn "Warning: workspace '$WORKSPACE' not in default set (${VALID_WORKSPACES[*]}). Proceeding anyway."
+
+[[ -z "$OBJECTIVE" ]] && die "Objective cannot be empty"
+
+# ── Prerequisites check ─────────────────────────────────────────────────
+if [[ ! -f "$SEND_SCRIPT" ]]; then
+    die "Send script not found at $SEND_SCRIPT. Is AGENT_OS_HOME set correctly?"
+fi
+
+# ── Build send args ─────────────────────────────────────────────────────
+SEND_ARGS=("send" "$ROLE" "$WORKSPACE" "$OBJECTIVE")
+[[ -n "$BODY" ]] && SEND_ARGS+=(--body "$BODY")
+[[ -n "$SESSION" ]] && SEND_ARGS+=(--session "$SESSION")
+$WITH_MEMORY && SEND_ARGS+=(--with-memory)
+
+if $JSON; then
+    SEND_ARGS+=(--json)
+fi
+
+# ── Send the envelope ───────────────────────────────────────────────────
+info "→ Dispatching role=$ROLE workspace=$WORKSPACE..."
+
+SEND_OUTPUT=$(python3 "$SEND_SCRIPT" "${SEND_ARGS[@]}" 2>&1)
+echo "$SEND_OUTPUT"
+
+# Extract RUN_ID
+if $JSON; then
+    RUN_ID=$(echo "$SEND_OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['run_id'])" 2>/dev/null || echo "")
+else
+    RUN_ID=$(echo "$SEND_OUTPUT" | grep '^RUN_ID=' | sed 's/^RUN_ID=//' | head -1)
+fi
+
+if [[ -z "$RUN_ID" ]]; then
+    die "Failed to get RUN_ID from send output"
+fi
+
+# ── Wait mode ───────────────────────────────────────────────────────────
+if $WAIT; then
+    info "→ Waiting for completion (RUN_ID=$RUN_ID)..."
+    POLL_INTERVAL=3
+    MAX_WAIT=600  # 10 minutes
+    ELAPSED=0
+
+    while [[ $ELAPSED -lt $MAX_WAIT ]]; do
+        sleep "$POLL_INTERVAL"
+        ELAPSED=$((ELAPSED + POLL_INTERVAL))
+
+        # Check completion
+        if $JSON; then
+            STATUS=$(python3 "$COMPLETION_SCRIPT" "$RUN_ID" --json 2>/dev/null || echo '{"state":"unknown"}')
+        else
+            STATUS=$(python3 "$COMPLETION_SCRIPT" "$RUN_ID" 2>/dev/null || echo "State: unknown")
+        fi
+
+        # Extract state
+        STATE=$(echo "$STATUS" | python3 -c "
+import sys, json
+if '--json' in ' '.join(sys.argv):
+    d = json.loads('$STATUS' if '$STATUS'.startswith('{') else '{}')
+else:
+    # Parse human output
+    for line in '''$STATUS'''.split('\n'):
+        if line.startswith('State:'):
+            d = {'state': line.split(':',1)[1].strip()}
+            break
+    else:
+        d = {'state': 'unknown'}
+print(d.get('state', 'unknown'))
+" 2>/dev/null || echo "unknown")
+
+        case "$STATE" in
+            succeeded)
+                ok "✓ Task succeeded!"
+                if $JSON; then
+                    echo "$STATUS"
+                else
+                    echo ""
+                    echo "$STATUS"
+                fi
+                exit 0
+                ;;
+            failed)
+                warn "✗ Task failed"
+                if $JSON; then
+                    echo "$STATUS"
+                else
+                    echo ""
+                    echo "$STATUS"
+                fi
+                exit 1
+                ;;
+            cancelled)
+                warn "✗ Task cancelled"
+                if $JSON; then
+                    echo "$STATUS"
+                else
+                    echo ""
+                    echo "$STATUS"
+                fi
+                exit 2
+                ;;
+            *)
+                # Still running — show progress
+                if (( ELAPSED % 15 == 0 )); then
+                    echo "  ... still waiting (${ELAPSED}s elapsed, state=$STATE)"
+                fi
+                ;;
+        esac
+    done
+
+    # Timeout
+    warn "⚠ Task timed out after ${MAX_WAIT}s (state=$STATE)"
+    if $JSON; then
+        python3 "$COMPLETION_SCRIPT" "$RUN_ID" --json 2>/dev/null || echo '{"state":"timeout","run_id":"'"$RUN_ID"'"}'
+    else
+        echo ""
+        echo "$STATUS"
+    fi
+    exit 3
+fi
+
+# Print run info for non-wait mode
+if ! $JSON; then
+    info "→ Use: acp_task --wait or check with:"
+    info "  python3 \"$COMPLETION_SCRIPT\" \"$RUN_ID\""
+    info "  python3 \"$COMPLETION_SCRIPT\" \"$RUN_ID\" --json"
+fi

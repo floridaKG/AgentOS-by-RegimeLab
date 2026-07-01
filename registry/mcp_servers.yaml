@@ -1,0 +1,10 @@
+# Public Agent OS MCP servers registry.
+# Only MCP servers available to public users are listed here.
+# Private or owner-specific MCP servers are not included.
+# Last rebuilt: 2026-06-25
+
+# MCP (Model Context Protocol) servers extend agent capabilities with
+# external tool integrations. To add an MCP server, add an entry below
+# with the server name, description, tools, and configuration.
+
+mcp_servers: []

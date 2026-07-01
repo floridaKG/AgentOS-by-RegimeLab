@@ -1,0 +1,462 @@
+#!/usr/bin/env python3
+"""
+ACP Daemon — Polls inbox directories and dispatches to agents via acpx.
+
+Runs in a loop, picking up envelopes from inboxes, marking them as claimed,
+then dispatching via acpx (or logging what would happen if acpx is not installed).
+
+State machine: queued → claimed → running → succeeded | failed | cancelled
+
+Usage:
+    acp-daemon              # Run in foreground (default)
+    acp-daemon --daemon     # Fork to background (use with tmux/systemd)
+    acp-daemon --once       # Process one batch, then exit
+    acp-daemon --stop       # Gracefully stop a running daemon via PID file
+"""
+
+import json
+import logging
+import os
+import signal
+import subprocess
+import sys
+import time
+import glob as glob_mod
+import hashlib
+from pathlib import Path
+
+# ── Configuration ───────────────────────────────────────────────────────
+AGENT_OS_HOME = os.environ.get("AGENT_OS_HOME", "")
+if not AGENT_OS_HOME:
+    script_dir = Path(__file__).resolve().parent
+    if (script_dir / "AGENTS.md").exists():
+        AGENT_OS_HOME = str(script_dir)
+    elif (script_dir.parent / "AGENTS.md").exists():
+        AGENT_OS_HOME = str(script_dir.parent)
+    else:
+        AGENT_OS_HOME = os.path.join(os.path.expanduser("~"), "agent-os")
+
+ACP_ROOT = os.path.join(AGENT_OS_HOME, ".local", "state", "agent-os", "acp")
+INBOX_BASE = os.path.join(ACP_ROOT, "inboxes", "workspaces")
+RUNS_DIR = os.path.join(ACP_ROOT, "runs")
+LOG_DIR = os.path.join(ACP_ROOT, "logs")
+PID_FILE = os.path.join(LOG_DIR, "daemon.pid")
+LOCK_FILE = os.path.join(ACP_ROOT, "daemon.lock")
+LOG_FILE = os.path.join(LOG_DIR, "daemon.log")
+ROLES_FILE = os.path.join(AGENT_OS_HOME, ".config", "agent-workflows", "roles.toml")
+SEND_SCRIPT = os.path.join(AGENT_OS_HOME, ".config", "agent-workflows", "acp", "acp_send.py")
+DEAD_LETTER_DIR = os.path.join(ACP_ROOT, "dead_letters")
+
+POLL_INTERVAL = 5  # seconds
+MAX_DISPATCH_AGE = 3600  # 1 hour — skip stale envelopes
+
+# ── Setup ───────────────────────────────────────────────────────────────
+os.makedirs(LOG_DIR, exist_ok=True)
+os.makedirs(RUNS_DIR, exist_ok=True)
+os.makedirs(DEAD_LETTER_DIR, exist_ok=True)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  ACP_DAEMON  %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+    handlers=[
+        logging.FileHandler(LOG_FILE),
+        logging.StreamHandler(sys.stderr),
+    ],
+)
+log = logging.getLogger("acp-daemon")
+
+# Track if we should stop
+_stop_requested = False
+
+
+def signal_handler(signum, frame):
+    global _stop_requested
+    signame = signal.Signals(signum).name
+    log.info("Received %s — initiating graceful shutdown", signame)
+    _stop_requested = True
+
+
+def _load_roles():
+    """Load role→agent mappings from roles.toml."""
+    if not os.path.exists(ROLES_FILE):
+        log.warning("Roles file not found at %s; using fallback defaults", ROLES_FILE)
+        return {
+            "executor": {"default": "opencode", "model": "deepseek-v4-flash-free"},
+            "explorer": {"default": "opencode", "model": "deepseek-v4-flash-free"},
+            "architect": {"default": "opencode", "model": "deepseek-v4-flash-free"},
+            "reviewer": {"default": "opencode", "model": "deepseek-v4-flash-free"},
+            "code_reviewer": {"default": "opencode", "model": "mimo-v2.5-free"},
+            "escalation": {"default": "codex", "model": "gpt-5.5"},
+            "hard_escalation": {"default": "claude", "model": "opus"},
+            "droid": {"default": "opencode", "model": "deepseek-v4-flash-free"},
+        }
+    try:
+        import tomllib  # Python 3.11+
+    except ImportError:
+        try:
+            import tomli as tomllib
+        except ImportError:
+            log.error("tomllib/tomli not available; install with: pip install tomli")
+            return {}
+
+    with open(ROLES_FILE, "rb") as f:
+        data = tomllib.load(f)
+    return data.get("roles", {})
+
+
+def _check_acpx():
+    """Check if acpx is available on PATH."""
+    try:
+        result = subprocess.run(
+            ["which", "acpx"], capture_output=True, text=True, timeout=10
+        )
+        return result.returncode == 0
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
+
+
+def _write_event(run_dir, event_type, data):
+    """Append an event line to events.jsonl for a run."""
+    event = {
+        "event": event_type,
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "data": data,
+    }
+    os.makedirs(run_dir, exist_ok=True)
+    events_path = os.path.join(run_dir, "events.jsonl")
+    with open(events_path, "a") as f:
+        f.write(json.dumps(event, default=str) + "\n")
+
+
+def _transition_run(run_id, new_state, reason=""):
+    """Transition a run to a new state via acp_send.py."""
+    try:
+        subprocess.run(
+            [sys.executable, SEND_SCRIPT, "transition", run_id, new_state,
+             "--source", "acp-daemon", "--reason", reason],
+            capture_output=True, text=True, timeout=15,
+        )
+    except subprocess.TimeoutExpired:
+        log.warning("Timeout transitioning run %s to %s", run_id, new_state)
+
+
+def _read_envelope(run_id):
+    """Read envelope.json for a run."""
+    path = os.path.join(RUNS_DIR, run_id, "envelope.json")
+    if not os.path.exists(path):
+        return None
+    with open(path, "r") as f:
+        return json.load(f)
+
+
+def _write_envelope(run_id, data):
+    """Write envelope.json for a run."""
+    run_dir = os.path.join(RUNS_DIR, run_id)
+    os.makedirs(run_dir, exist_ok=True)
+    path = os.path.join(run_dir, "envelope.json")
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2, default=str)
+
+
+def _move_to_dead_letter(envelope, reason):
+    """Move a failed envelope to dead_letters."""
+    run_id = envelope.get("run_id", "unknown")
+    dl_path = os.path.join(DEAD_LETTER_DIR, f"{run_id}.json")
+    envelope["dead_letter_reason"] = reason
+    envelope["dead_letter_at"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+    with open(dl_path, "w") as f:
+        json.dump(envelope, f, indent=2, default=str)
+    log.warning("Moved run %s to dead_letters: %s", run_id, reason)
+
+
+def _scan_inboxes():
+    """Scan all workspace inboxes for queued envelopes."""
+    if not os.path.isdir(INBOX_BASE):
+        log.warning("Inbox base %s does not exist", INBOX_BASE)
+        return []
+
+    envelopes = []
+    for ws_dir in sorted(glob_mod.iglob(os.path.join(INBOX_BASE, "*"))):
+        if not os.path.isdir(ws_dir):
+            continue
+        workspace = os.path.basename(ws_dir)
+        for fpath in sorted(glob_mod.iglob(os.path.join(ws_dir, "*.json"))):
+            try:
+                with open(fpath, "r") as f:
+                    env = json.load(f)
+                if env.get("state") == "queued":
+                    envelopes.append((workspace, fpath, env))
+            except (json.JSONDecodeError, OSError) as e:
+                log.warning("Failed to read inbox %s: %s", fpath, e)
+    return envelopes
+
+
+def _dispatch(workspace, inbox_path, envelope):
+    """Dispatch an envelope to its target agent."""
+    run_id = envelope["run_id"]
+    role = envelope["role"]
+    objective = envelope["objective"]
+    body = envelope.get("body", "")
+    session = envelope.get("session", "")
+
+    roles = _load_roles()
+    role_config = roles.get(role, {"default": "opencode", "model": "unknown"})
+    agent = role_config.get("default", "opencode")
+    model = role_config.get("model", "")
+
+    run_dir = os.path.join(RUNS_DIR, run_id)
+    artifacts_dir = os.path.join(run_dir, "artifacts")
+    os.makedirs(artifacts_dir, exist_ok=True)
+
+    log.info("ACP_DISPATCH run=%s role=%s agent=%s model=%s ws=%s", run_id, role, agent, model, workspace)
+
+    # Mark as claimed
+    _transition_run(run_id, "claimed", f"Dispatching to {agent} ({model})")
+    _write_event(run_dir, "dispatch_claimed", {"agent": agent, "model": model})
+
+    # Check if acpx is available
+    has_acpx = _check_acpx()
+
+    # Build prompt file
+    prompt_lines = [objective]
+    if body:
+        prompt_lines.append("")
+        prompt_lines.append(body)
+    if session:
+        prompt_lines.append("")
+        prompt_lines.append(f"(Session: {session})")
+
+    prompt_text = "\n".join(prompt_lines)
+    prompt_file = os.path.join(run_dir, "prompt.txt")
+    with open(prompt_file, "w") as f:
+        f.write(prompt_text)
+
+    if has_acpx:
+        _do_acpx_dispatch(run_id, agent, session, prompt_file, run_dir, artifacts_dir)
+    else:
+        _do_dry_run_dispatch(run_id, agent, model, prompt_file, run_dir, artifacts_dir)
+
+
+def _do_acpx_dispatch(run_id, agent, session, prompt_file, run_dir, artifacts_dir):
+    """Dispatch via acpx (real agent execution)."""
+    _transition_run(run_id, "running", f"Executing via acpx {agent}")
+    _write_event(run_dir, "dispatch_started", {"agent": agent, "method": "acpx"})
+
+    if session:
+        cmd = ["acpx", agent, "prompt", "-s", session, "-f", prompt_file]
+    else:
+        cmd = ["acpx", agent, "exec", "-f", prompt_file]
+
+    log.info("ACP_EXEC run=%s cmd=%s", run_id, " ".join(cmd))
+    _write_event(run_dir, "adapter_started", {"cmd": " ".join(cmd)})
+
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True, text=True, timeout=600,
+        )
+        stdout_path = os.path.join(artifacts_dir, "output_stdout.md")
+        with open(stdout_path, "w") as f:
+            f.write(result.stdout or "")
+
+        stderr_path = os.path.join(artifacts_dir, "adapter_completed.stderr")
+        with open(stderr_path, "w") as f:
+            f.write(result.stderr or "")
+
+        if result.returncode == 0:
+            log.info("ACP_SUPERVISE run=%s succeeded", run_id)
+            _write_event(run_dir, "dispatch_completed", {"exit_code": 0})
+            _transition_run(run_id, "succeeded", "Task completed via acpx")
+        else:
+            log.warning("ACP_SUPERVISE run=%s failed (exit=%d)", run_id, result.returncode)
+            _write_event(run_dir, "dispatch_failed", {"exit_code": result.returncode, "stderr": result.stderr[:500]})
+            _transition_run(run_id, "failed", f"acpx exit code {result.returncode}")
+
+    except subprocess.TimeoutExpired:
+        log.warning("ACP_SUPERVISE run=%s timed out (600s)", run_id)
+        _write_event(run_dir, "dispatch_timeout", {"timeout_seconds": 600})
+        _transition_run(run_id, "failed", "worker_timeout (600s)")
+    except FileNotFoundError:
+        log.error("acpx binary not found on PATH — cannot dispatch %s to %s", run_id, agent)
+        _write_event(run_dir, "dispatch_error", {"error": "acpx not found"})
+        _transition_run(run_id, "failed", "acpx not found on PATH")
+
+
+def _do_dry_run_dispatch(run_id, agent, model, prompt_file, run_dir, artifacts_dir):
+    """Log what would happen if acpx were available (dry-run mode)."""
+    log.info("ACP_DISPATCH_DRY run=%s would dispatch to %s (%s)", run_id, agent, model)
+    _write_event(run_dir, "dispatch_dry_run", {
+        "agent": agent,
+        "model": model,
+        "note": "acpx not installed — dry run only",
+        "would_run": f"acpx {agent} exec -f {prompt_file}",
+    })
+
+    # Write a placeholder output
+    output_path = os.path.join(artifacts_dir, "output_dry_run.md")
+    with open(output_path, "w") as f:
+        f.write(
+            f"# Dry Run — ACP Dispatch Simulation\n\n"
+            f"**Run ID:** {run_id}\n"
+            f"**Agent:** {agent} ({model})\n"
+            f"**Prompt file:** {prompt_file}\n\n"
+            f"---\n\n"
+            f"*This is a dry-run output. acpx was not found on PATH.*\n"
+            f"*To enable real dispatch, install acpx (npm install -g acpx).*\n\n"
+            f"**Prompt would have been:**\n\n"
+        )
+        with open(prompt_file, "r") as pf:
+            f.write(pf.read())
+
+    log.info("ACP_SUPERVISE run=%s dry-run completed", run_id)
+    _transition_run(run_id, "succeeded", "Dry-run (acpx not installed)")
+    _write_event(run_dir, "dispatch_completed", {"exit_code": 0, "mode": "dry_run"})
+
+
+def main_loop():
+    """Main polling loop."""
+    global _stop_requested
+
+    log.info("ACP_DAEMON_START pid=%s home=%s", os.getpid(), AGENT_OS_HOME)
+    log.info("ACP_DAEMON_CONFIG roles=%s inbox=%s poll=%ds", ROLES_FILE, INBOX_BASE, POLL_INTERVAL)
+
+    has_acpx = _check_acpx()
+    if has_acpx:
+        log.info("ACP_DAEMON_ACPX_FOUND acpx is available on PATH — real dispatch mode")
+    else:
+        log.warning("ACP_DAEMON_ACPX_MISSING acpx not found — dry-run mode (logging only)")
+
+    cycles = 0
+    while not _stop_requested:
+        cycles += 1
+        try:
+            inbox_messages = _scan_inboxes()
+            for workspace, inbox_path, envelope in inbox_messages:
+                if _stop_requested:
+                    break
+
+                # Check age — skip stale envelopes (>1 hour)
+                created = envelope.get("created_at", "")
+                if created:
+                    try:
+                        created_ts = time.mktime(
+                            time.strptime(created.split("+")[0].split("-")[0], "%Y-%m-%dT%H:%M:%S")
+                        )
+                        age = time.time() - created_ts
+                        if age > MAX_DISPATCH_AGE:
+                            log.warning("Skipping stale envelope %s (age=%ds)", inbox_path, age)
+                            _move_to_dead_letter(envelope, f"Stale: age {age}s exceeds {MAX_DISPATCH_AGE}s")
+                            os.remove(inbox_path)
+                            continue
+                    except (ValueError, OSError):
+                        pass
+
+                log.info("ACP_PICKUP run=%s ws=%s inbox=%s", envelope["run_id"], workspace, inbox_path)
+                _dispatch(workspace, inbox_path, envelope)
+
+                # Remove from inbox
+                try:
+                    os.remove(inbox_path)
+                except OSError:
+                    pass
+
+            if cycles == 1 or cycles % 12 == 0:  # Log every ~60s
+                log.info("ACP_SUPERVISE cycle=%d inbox_checked=%d", cycles, len(inbox_messages))
+
+        except Exception as exc:
+            log.error("ACP_ERROR cycle=%d: %s", cycles, exc, exc_info=True)
+
+        # Wait before next poll
+        for _ in range(POLL_INTERVAL):
+            if _stop_requested:
+                break
+            time.sleep(1)
+
+    log.info("ACP_DAEMON_STOPPED cycles=%d", cycles)
+
+
+def check_lock():
+    """Check/create lockfile to prevent duplicate daemon instances."""
+    if os.path.exists(LOCK_FILE):
+        with open(LOCK_FILE, "r") as f:
+            old_pid = f.read().strip()
+        if old_pid and os.path.exists(f"/proc/{old_pid}"):
+            log.error("ACP_DAEMON_LOCK daemon already running (pid=%s)", old_pid)
+            sys.exit(1)
+        else:
+            # Stale lock
+            log.warning("ACP_DAEMON_STALE_LOCK removing stale pid=%s", old_pid)
+    with open(LOCK_FILE, "w") as f:
+        f.write(str(os.getpid()))
+
+
+def release_lock():
+    """Release the lockfile."""
+    if os.path.exists(LOCK_FILE):
+        with open(LOCK_FILE, "r") as f:
+            pid = f.read().strip()
+        if pid == str(os.getpid()):
+            os.remove(LOCK_FILE)
+
+
+def cmd_stop():
+    """Stop a running daemon via PID file."""
+    if not os.path.exists(PID_FILE):
+        log.error("No daemon PID file at %s — is it running?", PID_FILE)
+        sys.exit(1)
+    with open(PID_FILE, "r") as f:
+        pid = f.read().strip()
+    if not pid:
+        log.error("Empty PID file")
+        sys.exit(1)
+    try:
+        os.kill(int(pid), signal.SIGTERM)
+        log.info("Sent SIGTERM to pid=%s", pid)
+    except ProcessLookupError:
+        log.warning("Process %s not found — removing stale PID file", pid)
+    os.remove(PID_FILE)
+
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="ACP Daemon — inbox poller and dispatcher")
+    parser.add_argument("--daemon", action="store_true", help="Background mode (fork)")
+    parser.add_argument("--once", action="store_true", help="Process one batch, then exit")
+    parser.add_argument("--stop", action="store_true", help="Stop running daemon")
+    args = parser.parse_args()
+
+    if args.stop:
+        cmd_stop()
+        return
+
+    # Register signal handlers
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    # Check lock
+    check_lock()
+
+    # Write PID file
+    with open(PID_FILE, "w") as f:
+        f.write(str(os.getpid()))
+
+    try:
+        if args.once:
+            inbox_messages = _scan_inboxes()
+            log.info("ACP_ONCE found %d queued messages", len(inbox_messages))
+            for workspace, inbox_path, envelope in inbox_messages:
+                _dispatch(workspace, inbox_path, envelope)
+                try:
+                    os.remove(inbox_path)
+                except OSError:
+                    pass
+            log.info("ACP_ONCE completed")
+        else:
+            main_loop()
+    finally:
+        release_lock()
+
+
+if __name__ == "__main__":
+    main()

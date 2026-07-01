@@ -1,0 +1,52 @@
+# Critical Infrastructure Registry (Template)
+# Source of truth for the regression-prevention checker.
+#
+# Each entry maps a critical surface to its role, callers, tests, and
+# regression classes it protects against.
+#
+# The checker (bin/critical-change-check) reads this YAML and runs the
+# listed tests when files matching an entry's path are staged or when
+# --all is used.
+#
+# FORMAT:
+#   path:               glob or literal path to the critical surface
+#   role:               one-line description of what it does
+#   callers:            scripts/binaries that depend on this surface
+#   tests:              test commands that verify this surface's contract
+#   regression_classes: which regression classes this protects
+#
+# CUSTOMIZE THIS FILE for your installation. Use $AGENT_OS_HOME to reference
+# your Agent OS root. The checker reads this YAML at startup.
+#
+# Example entries below — replace with your own critical surfaces.
+
+registry_version: "1.0"
+last_updated: "2026-06-30"
+
+entries:
+  # ── Example: ACP dispatch configuration ────────────────────────────────
+  # - path: "$AGENT_OS_HOME/.config/agent-workflows/acp/acp_send.py"
+  #   role: "ACP message builder and sender"
+  #   callers:
+  #     - "$AGENT_OS_HOME/bin/acp-task"
+  #   tests:
+  #     - "python3 $AGENT_OS_HOME/tests/test_acp_send.py"
+  #   regression_classes: ["routing", "envelope_schema"]
+
+  # ── Example: Memory recall hook ────────────────────────────────────────
+  # - path: "$AGENT_OS_HOME/agent-os/memory/core/recall_hook.py"
+  #   role: "Bounded automatic memory recall for interactive agent hosts"
+  #   callers:
+  #     - "$AGENT_OS_HOME/bin/droid-exec"
+  #   tests:
+  #     - "python3 $AGENT_OS_HOME/tests/test_recall_hook.py"
+  #   regression_classes: ["memory_recall"]
+
+  # ── Example: Workflow runner ───────────────────────────────────────────
+  # - path: "$AGENT_OS_HOME/.config/agent-workflows/lib/run.sh"
+  #   role: "Centralized agent runner: validation, retry, fallback chains"
+  #   callers:
+  #     - "$AGENT_OS_HOME/.config/agent-workflows/acp/acp_workflow.py"
+  #   tests:
+  #     - "bash $AGENT_OS_HOME/tests/smoke/test_runner.sh"
+  #   regression_classes: ["workflow_runner"]

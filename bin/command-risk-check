@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# command-risk-check — Classify shell commands by risk tier
+# Hard rule enforcement tool referenced by hard_rules.yaml and hard-rule-smoke.sh.
+#
+# Usage: command-risk-check --cmd "<command string>"
+#
+# Tiers: safe, caution, danger, critical
+# Recommendations: allow, review, deny
+# Output: JSON with keys: tier, recommendation, reason
+# Exit code: always 0
+
+set -euo pipefail
+
+# ── Help ──
+if [[ "${1:-}" == "--help" ]]; then
+  cat <<'HELP'
+Usage: command-risk-check --cmd "<command string>"
+
+Classifies a shell command into a risk tier and returns an allow/review/deny
+recommendation as JSON.
+
+Tiers:
+  safe     — benign info/display commands (echo, date, whoami, etc.)
+  caution  — standard dev commands (ls, grep, git status, etc.)
+  danger   — destructive or sensitive commands (rm -rf, git push --force, credential reads)
+  critical — unrecoverable destructive commands (rm -rf /, rm -rf /etc, etc.)
+
+Output: {"tier": "...", "recommendation": "...", "reason": "..."}
+Exit code is always 0 — parse the JSON to read the result.
+HELP
+  exit 0
+fi
+
+# ── Parse --cmd flag ──
+CMD=""
+if [[ "${1:-}" == "--cmd" ]]; then
+  CMD="$2"
+fi
+
+if [[ -z "$CMD" ]]; then
+  echo '{"tier":"unknown","recommendation":"review","reason":"no command provided"}'
+  exit 0
+fi
+
+# ── Classification (ordered from most to least severe) ──
+
+# CRITICAL / deny — unrecoverable destructive commands
+if echo "$CMD" | grep -qE '^rm -rf /\s*$|^rm -rf /etc\s*$|^rm -rf /home\s*$|^rm -rf /root\s*$|^rm -rf /var\s*$'; then
+  echo '{"tier":"critical","recommendation":"deny","reason":"unrecoverable destructive command: would delete system directories"}'
+  exit 0
+fi
+
+# DANGER / review — rm -rf on any path not matched above
+if echo "$CMD" | grep -qE '^rm -rf '; then
+  echo '{"tier":"danger","recommendation":"review","reason":"destructive rm -rf command, requires human review"}'
+  exit 0
+fi
+
+# DANGER / review — destructive git operations
+if echo "$CMD" | grep -qE '^git (reset --hard|checkout -- \.|push --force|push -f|clean -fd|stash drop|add \.|add -A|commit|stash|clone|worktree)'; then
+  echo '{"tier":"danger","recommendation":"review","reason":"destructive git operation, requires human review"}'
+  exit 0
+fi
+
+# DANGER / review — sensitive file reads (.ssh/)
+if echo "$CMD" | grep -qE '(cat|head|tail|less|more|vim?|nano|code|open|xdg-open)\s+.*\.ssh/'; then
+  echo '{"tier":"danger","recommendation":"review","reason":"sensitive file access: .ssh directory"}'
+  exit 0
+fi
+
+# DANGER / review — sensitive file reads (.env*)
+if echo "$CMD" | grep -qE '(cat|head|tail|less|more|vim?|nano|code|open|xdg-open)\s+.*\.env\b'; then
+  echo '{"tier":"danger","recommendation":"review","reason":"sensitive file access: .env file"}'
+  exit 0
+fi
+
+# DANGER / review — sensitive file reads (private keys / certs)
+if echo "$CMD" | grep -qE '(cat|head|tail|less|more|vim?|nano|code|open|xdg-open)\s+.*(_ed25519|_rsa|\.pem)'; then
+  echo '{"tier":"danger","recommendation":"review","reason":"sensitive file access: private key or certificate file"}'
+  exit 0
+fi
+
+# CAUTION / allow — standard development and utility commands
+if echo "$CMD" | grep -qE '^(ls|cd|pwd|cat\b|grep\b|find\b|python3\b|npm\b|pip\b|git (status|diff|log|branch)\b)'; then
+  echo '{"tier":"caution","recommendation":"allow","reason":"standard development or utility command"}'
+  exit 0
+fi
+
+# SAFE / allow — benign informational commands
+if echo "$CMD" | grep -qE '^(echo|printf|date|whoami|uname|head\b|tail\b|wc\b|sort\b|mkdir\b|touch\b)'; then
+  echo '{"tier":"safe","recommendation":"allow","reason":"benign informational command"}'
+  exit 0
+fi
+
+# Catch-all — unrecognized commands default to caution/allow
+echo '{"tier":"caution","recommendation":"allow","reason":"unrecognized command, defaulting to caution"}'
+exit 0
