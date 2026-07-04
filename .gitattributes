@@ -1,5 +1,4 @@
 * text=auto eol=lf
-*.mp4 binary
+*.mp4 filter=lfs diff=lfs merge=lfs -text
 *.png binary
 *.vtt text
-*.mp4 filter=lfs diff=lfs merge=lfs -text
