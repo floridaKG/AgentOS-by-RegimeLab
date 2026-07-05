@@ -166,6 +166,16 @@ Run the verification script:
 bash $AGENT_OS_HOME/scripts/agent-os-verify.sh
 ```
 
+### Try the Unified CLI
+
+Agent OS ships with a unified CLI that dispatches to 18 subsystems:
+
+```bash
+python3 $AGENT_OS_HOME/scripts/agent-os --help
+python3 $AGENT_OS_HOME/scripts/agent-os doctor
+python3 $AGENT_OS_HOME/scripts/agent-os health
+```
+
 ## Getting Started
 
 1. **Read `AGENTS.md`** — the entry point for every agent session

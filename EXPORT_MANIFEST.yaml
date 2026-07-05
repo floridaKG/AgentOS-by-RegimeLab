@@ -39,6 +39,7 @@ allowlist:
   bin:
     source: $AGENT_OS_HOME/bin
     files:
+      - agent-os
       - memory-inject
       - memory-lt
       - memory-promote
@@ -165,6 +166,7 @@ allowlist:
   scripts:
     source: $AGENT_OS_HOME/scripts
     files:
+      - agent-os
       - agent-os-boot.sh
       - agent-os-health.sh
       - agent-os-verify.sh
