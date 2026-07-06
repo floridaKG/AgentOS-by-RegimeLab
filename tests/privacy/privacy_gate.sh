@@ -14,6 +14,13 @@ echo "=== Agent OS Privacy Gate ==="
 echo "Stage: $STAGE"
 echo ""
 
+# Require ripgrep (rg) — all text scans depend on it.
+if ! command -v rg >/dev/null 2>&1; then
+  echo "ERROR: ripgrep (rg) is required but not installed." >&2
+  echo "Install it with: sudo apt-get install ripgrep" >&2
+  exit 2
+fi
+
 GATE_DIR="$STAGE/.ossbuild/privacy-gate"
 mkdir -p "$GATE_DIR"
 
