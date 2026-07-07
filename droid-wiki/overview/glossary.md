@@ -24,6 +24,12 @@
 
 **Citation** — Source attribution tracking for memory records, implemented in `memory/core/citation.py`.
 
+## D
+
+**Droid** — A proprietary agent runtime supported by the ACP protocol. Droid
+requires either a Factory subscription or bring-your-own-key (BYOK)
+configuration. See the README for supported agent options.
+
 ## E
 
 **Envelope** — A task request packet in the ACP system, written to the filesystem by `acp-task` and picked up by the daemon.

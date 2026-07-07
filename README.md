@@ -3,8 +3,12 @@
 An agent-agnostic harness -- the OS agents run on.
 
 Agent OS is a CLI-first harness for orchestrating any AI coding agent
-(Claude Code, Codex, Pi, Hermes, OpenCode, Droid, and future models)
+(Claude Code, Codex, Pi, Hermes, OpenCode, Droid\*, and future models)
 as first-class citizens in a shared, memory-driven system.
+
+> \* Droid is a proprietary agent runtime. It requires either a Factory
+> subscription or bring-your-own-key (BYOK) configuration. All other listed
+> agents are available to OSS users without additional subscription.
 
 ## Philosophy
 

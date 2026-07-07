@@ -240,22 +240,27 @@ else
   echo "    export PATH=\"\$AGENT_OS_HOME/bin:\$PATH\""
 fi
 
-# ── Optional: RTK (Rust Token Killer) ──
-echo ""
-echo "--- Optional: RTK (Rust Token Killer) ---"
-echo "  RTK is a CLI proxy that reduces LLM token consumption by 60-90%"
-echo "  by filtering command outputs before they reach your AI agent."
-echo "  It's recommended but not required. (Apache 2.0, github.com/rtk-ai/rtk)"
-echo ""
-if [ "$TEST_MODE" = "1" ]; then
-  skip "RTK installation (test mode)"
-elif command -v rtk >/dev/null 2>&1; then
-  pass "RTK already installed: $(rtk --version 2>&1)"
-elif command -v brew >/dev/null 2>&1; then
-  echo "  Install RTK with: brew install rtk"
-else
-  echo "  Install RTK with: curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | sh"
-fi
+ # ── Optional: RTK (Rust Token Killer) ──
+ echo ""
+ echo "--- Optional: RTK (Rust Token Killer) ---"
+ echo "  RTK is a CLI proxy that reduces LLM token consumption by 60-90%"
+ echo "  by filtering command outputs before they reach your AI agent."
+ echo "  It's recommended but not required."
+ echo "  (Apache 2.0 — github.com/rtk-ai/rtk — external project, not created by Agent OS)"
+ echo ""
+ if [ "$TEST_MODE" = "1" ]; then
+   skip "RTK installation (test mode)"
+ elif command -v rtk >/dev/null 2>&1; then
+   pass "RTK already installed: $(rtk --version 2>&1)"
+ else
+   echo "  Installing RTK from github.com/rtk-ai/rtk..."
+   echo "  (Official install script — full attribution in docs/rtk-usage-guide.md)"
+   if curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | sh; then
+     pass "RTK installed successfully"
+   else
+     echo "  WARNING: RTK installation failed (non-fatal — continuing without it)"
+   fi
+ fi
 
 # ── Summary ──
 echo ""

@@ -1,20 +1,13 @@
-# Agent OS OSS Export Manifest
-# Allowlist-based: ONLY paths listed below may enter the staging tree.
-# Source-of-truth: $AGENT_OS_HOME/agent-os (private cockpit)
-# Doc source: $AGENT_OS_HOME/agent-os-docs/ (private docs)
-# Staging root: $AGENT_OS_HOME/.local/state/agent-os-public-staging/
+# Agent OS OSS Contents Manifest
+# Documents every file in the public repository and why it's included.
+# The allowlist defines what ships; the denylist documents what was
+# intentionally excluded during curation.
 
 metadata:
   version: 1.0.0
   created: 2026-06-25
   umbrella: 2026-06-25-agent-os-opensource-program-umbrella
   license: Apache-2.0
-
-source_repos:
-  runtime: $AGENT_OS_HOME/agent-os
-  docs: $AGENT_OS_HOME/agent-os-docs
-  vault_os: $VAULT_PATH/docs/vault-os
-  superdocs: $PROJECT_ROOT/docs/superdocs
 
 allowlist:
   # --- Root-level files (all shipped root-level files) ---
@@ -295,7 +288,7 @@ denylist:
     - proposals/
     - notes/
     - legacy/
-    - droid-wiki/       # Ships via git (browsable on GitHub, MP4 inline playback); excluded from staged build artifact
+    - droid-wiki/       # Ships via git (documentation + overview video); excluded from staged build only
     - droid-wiki-new/
     - prompts/
     - forge/

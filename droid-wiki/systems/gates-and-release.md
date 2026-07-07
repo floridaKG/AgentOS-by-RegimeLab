@@ -12,9 +12,9 @@ The gates and release system ensures that Agent OS public distributions are clea
 |---|---|
 | **Privacy gate** | Scans all shipped content for owner identifiers, private paths, service identifiers, API keys, credentials, and other prohibited patterns. Implemented in `tests/privacy/privacy_gate.sh`. |
 | **Release gate** | Authoritative gate that runs all validations: privacy, syntax, registry, negative fixtures, clean-room install, Vault init, SuperDocs init, permissions, and Git metadata check. Implemented in `scripts/gate-release.sh`. |
-| **Clean-room gate** | Verifies the staging area has no build artifacts, caches, or temporary files. Implemented in `scripts/gate-cleanroom.sh`. |
+| **Clean-room gate** | Verifies the repository has no build artifacts, caches, or temporary files. Implemented in `scripts/gate-cleanroom.sh`. |
 | **Clean-room installation test** | Proves that a new user can install Agent OS in an isolated temporary HOME without access to the owner's machine, private repositories, or services. Runs 86+ checks. Implemented in `tests/clean-room/install_and_verify.sh`. |
-| **Export manifest** | `EXPORT_MANIFEST.yaml` — an allowlist-based system that defines exactly which files may enter the staging tree. Only paths listed in the manifest are shipped. |
+| **Export manifest** | `EXPORT_MANIFEST.yaml` — a contents manifest that documents every file in the repository. The allowlist defines what's included; the denylist documents what was intentionally excluded during curation. |
 | **Privacy boundary** | `PRIVACY_BOUNDARY.md` — documents what ships, what is excluded, and how maintainers verify that private material did not cross the boundary. |
 | **Release readiness** | `RELEASE_READINESS.md` — confirms the public candidate is a curated duplicate with no private runtime state, credentials, or personal content. |
 
@@ -24,28 +24,26 @@ The gates and release system ensures that Agent OS public distributions are clea
 
 ```mermaid
 flowchart TD
-    A[Source Repository] --> B[EXPORT_MANIFEST.yaml]
-    B --> C[Staging Tree]
-    C --> D[Privacy Gate]
-    C --> E[Syntax & Registry]
-    C --> F[Negative Fixtures]
-    C --> G[Clean-Room Install]
-    C --> H[Vault Init Tests]
-    C --> I[SuperDocs Init Tests]
-    C --> J[No Nested .ossbuild]
-    C --> K[Permissions Check]
-    C --> L[No .git Directory]
-    D --> M{All Pass?}
-    E --> M
-    F --> M
-    G --> M
-    H --> M
-    I --> M
-    J --> M
-    K --> M
-    L --> M
-    M -->|Yes| N[Release Ready]
-    M -->|No| O[Fix and Re-run]
+    A[Repository] --> B[Privacy Gate]
+    A --> C[Syntax & Registry]
+    A --> D[Negative Fixtures]
+    A --> E[Clean-Room Install]
+    A --> F[Vault Init Tests]
+    A --> G[SuperDocs Init Tests]
+    A --> H[No Nested .ossbuild]
+    A --> I[Permissions Check]
+    A --> J[No .git Directory]
+    B --> K{All Pass?}
+    C --> K
+    D --> K
+    E --> K
+    F --> K
+    G --> K
+    H --> K
+    I --> K
+    J --> K
+    K -->|Yes| L[Release Ready]
+    K -->|No| M[Fix and Re-run]
 ```
 
 ### Release gate checks (9 categories)
@@ -60,7 +58,7 @@ flowchart TD
 | 6 | SuperDocs init | 27 checks — SuperDocs scaffold initialization | `scripts/gate-release.sh` (embedded) |
 | 7 | No nested .ossbuild | Ensure no .ossbuild directory exists under shipped directories | `scripts/gate-cleanroom.sh` |
 | 8 | Permissions & dangling | Check file permissions and missing commands | `scripts/gate-release.sh` (embedded) |
-| 9 | No .git | Ensure no .git directory is present in the staging tree | `scripts/gate-release.sh` (embedded) |
+| 9 | No .git | Ensure no .git directory is present in shipped directories | `scripts/gate-release.sh` (embedded) |
 
 ### Privacy gate checks
 
@@ -79,14 +77,13 @@ The privacy gate (`tests/privacy/privacy_gate.sh`) runs 23 distinct scans:
 | Production domains | Scans for external service URLs |
 | Personal file paths | Scans for `/home/username`, `/Users/username` |
 
-### Export manifest workflow
+### Contents manifest
 
-`EXPORT_MANIFEST.yaml` is an allowlist-based export system. The workflow:
-
-1. The manifest defines `allowlist` sections, each pointing to a `source` directory and listing `files` to include
-2. A `denylist` section lists patterns that are always blocked (`.env`, `*.sqlite`, `*.db`, `*.pem`, credentials, `node_modules/`, `handoffs/`, `droid-wiki/`, `.ossbuild/`, etc.)
-3. The staging tree is built by copying only files that match the allowlist and do not match the denylist
-4. Before each release, the release gate verifies that the staging tree matches the manifest
+`EXPORT_MANIFEST.yaml` is a contents manifest that documents every file in
+the repository. The manifest defines `allowlist` sections that list all
+shipped files, and a `denylist` section that documents what was intentionally
+excluded during curation. Before each release, the release gate validates
+that the repository matches the manifest.
 
 ### Clean-room verification
 
@@ -114,10 +111,9 @@ The clean-room installation test (`tests/clean-room/install_and_verify.sh`) prov
 | File | Purpose |
 |---|---|
 | `scripts/gate-release.sh` | Authoritative release gate — runs all validations (9 categories) |
-| `scripts/gate-privacy.sh` | Privacy gate — scans staging area for private/sensitive content |
+| `scripts/gate-privacy.sh` | Privacy gate — scans repository for private/sensitive content |
 | `scripts/gate-cleanroom.sh` | Clean-room gate — verifies no build artifacts, caches, or temp files |
 | `tests/privacy/privacy_gate.sh` | Agent OS privacy gate — 23 scans for prohibited patterns |
 | `tests/clean-room/install_and_verify.sh` | Clean-room installation test — 86+ checks in isolated HOME |
 | `PRIVACY_BOUNDARY.md` | Privacy boundary — documents what ships, what is excluded, verification process |
-| `RELEASE_READINESS.md` | Release readiness — confirms the public candidate is a curated duplicate |
-| `EXPORT_MANIFEST.yaml` | Export manifest — allowlist-based system defining what files enter the staging tree |
+| `EXPORT_MANIFEST.yaml` | Contents manifest — documents every file and why it's included or excluded |

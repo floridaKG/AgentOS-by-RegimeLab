@@ -4,7 +4,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STAGING_DIR="${STAGING_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+REPO_ROOT="${REPO_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+STAGING_DIR="${STAGING_DIR:-$REPO_ROOT}"
 
 # Directories that should never contain .ossbuild
 SHIPPED_DIRS=("bin" "scripts" "examples" "docs" "skills" "memory" "registry")

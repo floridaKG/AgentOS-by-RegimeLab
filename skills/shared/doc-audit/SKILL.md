@@ -198,21 +198,15 @@ After identifying self-maintenance gaps, the audit should produce specific chang
 - Add new expiry policies (when docs auto-archive)
 
 
-## Automated Precursor: Dream
 
-Before running a manual doc-audit batch, consider running **Dream** first (`/dream` or `python3 dream/dream.py run`). Dream is an automated read-only crawl that:
-- Verifies every file reference against the live filesystem
-- Asks an LLM to verdict each doc as CLEAN or DRIFT
-- Produces a digest with dangling references and drift findings
+## Automated Precursor: Dream (Internal Only)
 
-Dream catches the mechanical issues (broken paths, stale tool references, missing files) that would otherwise consume manual audit time. Run Dream, verify its findings, then use doc-audit for the higher-judgment work: tier assignment, salvage-before-archive, root cause analysis, and self-maintenance recommendations.
+The internal Agent OS runtime includes **Dream**, an automated crawl that
+verifies file references and flags drift before a manual doc audit. Dream
+is not included in the OSS distribution.
 
-**Dream → doc-audit workflow:**
-1. Run Dream: `python3 dream/dream.py run --goal "audit docs" --boundary dream/boundaries/docs-v1.yaml --max-iterations 40`
-2. Verify DRIFT findings against live state (classify: regression/drift/artifact/false-positive)
-3. Fix regressions and drift directly
-4. Run doc-audit batch for remaining judgment calls (tier assignment, archival decisions)
-
+OSS users start directly with doc-audit below. The manual audit covers the
+same ground: broken paths, stale tool references, and tier assignments.
 ## Related Workflow: Vault Wikilink-Graph Audit
 
 `doc-audit` handles the `agent-os-docs/` SAST-baseline sprawl audit. A sibling
@@ -224,9 +218,8 @@ task the same skill supports: a deep read-only audit of the Knowledge Vault at
 The vault has its own `/validate` skill, but it uses basename-only wikilink
 resolution and over-reports broken links. This mode goes deeper: correct
 Obsidian resolution, source-type classification, rename-target verification, and
-MOC coverage measurement. Do NOT use `dream.py` for the vault (too slow /
-rate-limited for a 600+ file graph) — run a bare Python sweep for the
-deterministic phase, model only for classify/verify.
+MOC coverage measurement. Skip automated pre-scan (Dream is internal-only);
+run a bare Python sweep for the deterministic phase, model only for classify/verify.
 
 Full methodology, resolution rules, false-positive taxonomy, rename-rot
 verification, and the resolver/regex pitfalls are in

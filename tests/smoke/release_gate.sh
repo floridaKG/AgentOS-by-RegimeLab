@@ -4,9 +4,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STAGING_DIR="${STAGING_DIR:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
+REPO_ROOT="${REPO_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 
 echo "=== Redirecting to authoritative release gate ==="
 echo "  Canonical: scripts/gate-release.sh"
 echo ""
-exec bash "$STAGING_DIR/scripts/gate-release.sh" "$@"
+exec bash "$REPO_ROOT/scripts/gate-release.sh" "$@"

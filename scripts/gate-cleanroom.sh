@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# gate-cleanroom.sh — Verify staging area has no build artifacts, caches, or temp files
+# gate-cleanroom.sh — Verify repository has no build artifacts, caches, or temp files
 # Exit 0 = pass, exit 1 = fail
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STAGING_DIR="${STAGING_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+REPO_ROOT="${REPO_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+STAGING_DIR="${STAGING_DIR:-$REPO_ROOT}"
 
 echo "=== Clean-Room Gate ==="
 echo "  Scanning: $STAGING_DIR"

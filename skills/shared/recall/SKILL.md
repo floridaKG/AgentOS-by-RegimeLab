@@ -147,5 +147,6 @@ When the user asks "find everything about X" or "where did we leave Y", run a pa
 ## When NOT to Use
 
 - For domain research (use vault `learn` or `deep-dive` skills).
-- For reading the current code state (use `rtk read` / `rtk grep`).
+- For reading the current code state (use `rtk read` / `rtk grep` — RTK is an
+  optional external tool; falls back to standard commands if not installed).
 - For task tracking (use TaskCreate / TaskList).

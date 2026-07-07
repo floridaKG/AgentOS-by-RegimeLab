@@ -15,23 +15,19 @@
 set -euo pipefail
 
 # CONFIGURABLE: Set OWNER_USERNAME to your system username or login identifier.
-# The gate checks that no file in the export staging area contains this string.
+# The gate checks that no file in the repository contains this string.
 # Example: export OWNER_USERNAME="jdoe"
 OWNER_USERNAME="${OWNER_USERNAME:-}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STAGING_DIR="${STAGING_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+REPO_ROOT="${REPO_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 
-# CONFIGURABLE: Set OWNER_USERNAME to your system username or login identifier.
-# The gate checks that no file in the export staging area contains this string.
-# Example: export OWNER_USERNAME="jdoe"
-OWNER_USERNAME="${OWNER_USERNAME:-}"
-
+STAGING_DIR="$REPO_ROOT"
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║       Agent OS — Authoritative Release Gate                 ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
-echo "Staging directory: $STAGING_DIR"
+echo "Repository root: $STAGING_DIR"
 echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo ""
 

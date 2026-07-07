@@ -71,12 +71,14 @@ and have no license conflict with the Apache 2.0 Agent OS core.
 - Users must provide their own API keys in `~/.config/agent-os/config.env`
 - Secrets files are created with `chmod 600` permissions
 
-## Export Allowlist
+## Contents Manifest
 
-Only files explicitly listed in `.ossbuild/EXPORT_MANIFEST.yaml` may enter
-the staging tree. The allowlist is reviewed before each release.
+`EXPORT_MANIFEST.yaml` documents every file in the repository and explains
+why it's included. The allowlist defines what ships; the denylist documents
+what was intentionally excluded during curation. The manifest is reviewed
+before each release.
 
-## Export Denylist
+## Always Blocked
 
 The following patterns are always blocked:
 
@@ -85,7 +87,7 @@ The following patterns are always blocked:
 - `node_modules/`, `.venv/`, `__pycache__/`
 - `handoffs/`, `hermes-state/`, `state/`, `archive/`
 - `drafts/`, `proposals/`, `notes/`, `legacy/`
-- `droid-wiki/`
+- `droid-wiki/` (denylisted from build artifact only — ships via git for documentation and overview video)
 - `hooks/`, `acp/`, `config/`, `specs/`, `config.env`
 
 ## Release Scan Patterns

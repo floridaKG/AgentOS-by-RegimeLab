@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# gate-privacy.sh — Scan staging area for private/sensitive content
+# gate-privacy.sh — Scan repository for private/sensitive content
 # Exit 0 = pass, exit 1 = fail
 set -euo pipefail
 
 # CONFIGURABLE: Set OWNER_USERNAME to your system username or login identifier.
-# The gate checks that no file in the export staging area contains this string.
+# The gate checks that no file in the repository contains this string.
 # Example: export OWNER_USERNAME="jdoe"
 OWNER_USERNAME="${OWNER_USERNAME:-}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STAGING_DIR="${STAGING_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+REPO_ROOT="${REPO_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+STAGING_DIR="${STAGING_DIR:-$REPO_ROOT}"
 
 echo "=== Privacy Gate ==="
 echo "  Scanning: $STAGING_DIR"

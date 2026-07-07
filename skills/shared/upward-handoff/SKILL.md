@@ -264,7 +264,8 @@ Files read:
 
 Commands run:
 - `git diff --stat` on the target repository
-- rtk find on agent-os/registry/
+- rtk find on agent-os/registry/ (RTK is an optional external tool — falls back
+  to standard `find`/`grep` if not installed)
 
 Scope note: I did not read vault OS docs because [reason].
 ```

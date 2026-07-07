@@ -132,11 +132,11 @@ Optional components like Vault OS for knowledge management and SuperDocs for pro
 
 11.1
 00:04:10.496 --> 00:04:19.008
-Agent OS uses the Business Source License 1.1. It's free for personal use, evaluation, and internal development.
+Agent OS is published under Apache 2.0. It's free for personal use, commercial use, modification, and redistribution.
 
 11.3
 00:04:20.344 --> 00:04:28.355
-Production use requires a commercial license. The license converts to Apache 2.0 on June 27th, 2030.
+The full harness is open source under the Apache 2.0 license. See the LICENSE file in the repository for details.
 
 11.5
 00:04:30.192 --> 00:04:40.040

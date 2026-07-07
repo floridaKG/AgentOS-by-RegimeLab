@@ -36,6 +36,17 @@ up when you see a gap (use `python3 $AGENT_OS_HOME/scripts/agent_voice.py emit`)
 5. **Skill-Selection Convention** — Before loading any skill SKILL.md, run `skill-rank "<task>" --top 3 --json` to find the best match.
 6. **Verify Before Trusting** — If you read a doc that makes a factual claim, check the live state before acting.
 
+7. **No Credential Exposure** — Never write API keys, tokens, SSH keys, or
+   passwords to files, logs, stdout, or any output that could be stored or
+   transmitted. Use environment variables or `$AGENT_OS_HOME/config.env` /
+   `secrets.env` for all sensitive values.
+8. **No Temp Writes** — Never write files to `/tmp` or other world-readable
+   directories. Use the workspace directory or
+   `$AGENT_OS_HOME/.local/state/` for temporary storage.
+9. **Use RTK for Token Efficiency** — When `rtk` is available (`command -v rtk`),
+   prefer it over standard commands for file reads, directory listings, grep,
+   and git status. Falls back to standard commands automatically.
+
 ## Memory System (every agent, every session)
 
 The Agent OS memory system has multiple tiers. All agents should know these basics and contribute lessons.
