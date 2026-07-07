@@ -67,11 +67,13 @@ SEED_RECORD_ID = "st_seed_now"
 # ── Database Helpers ──────────────────────────────────────────────────────
 
 def get_conn():
-    """Return a SQLite connection with WAL mode and foreign keys enabled."""
+    """Return a SQLite connection with WAL mode, foreign keys, and a busy
+    timeout so concurrent writers don't raise SQLITE_BUSY mid-transaction."""
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.execute("PRAGMA journal_mode = WAL;")
     conn.execute("PRAGMA foreign_keys = ON;")
+    conn.execute("PRAGMA busy_timeout = 30000;")
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -81,6 +83,93 @@ def init_db(conn):
     schema = open(SCHEMA_PATH).read()
     conn.executescript(schema)
     conn.commit()
+
+
+def delete_record(record_id: str) -> int:
+    """Delete a record and ALL of its dependent rows in one transaction.
+
+    Shadow tables and their cascade behavior:
+      - st_tags: FK ON DELETE CASCADE -> removed automatically.
+      - st_semantic_cluster_members: FK ON DELETE CASCADE -> automatic.
+      - st_records_fts: content-storing FTS5, NOT FK-linked -> delete explicitly.
+      - memory_proposals / memory_diffs: NO ON DELETE CASCADE -> delete explicitly.
+
+    Returns the number of base rows deleted (0 if id did not exist).
+    """
+    conn = get_conn()
+    try:
+        conn.execute(
+            "DELETE FROM st_records_fts WHERE id = ?", (record_id,)
+        )
+        cur = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' "
+            "AND name='st_semantic_cluster_members'"
+        )
+        if cur.fetchone():
+            conn.execute(
+                "DELETE FROM st_semantic_cluster_members WHERE st_record_id = ?",
+                (record_id,),
+            )
+        cur = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' "
+            "AND name IN ('memory_proposals','memory_diffs')"
+        )
+        have_tables = {r[0] for r in cur.fetchall()}
+        if "memory_proposals" in have_tables:
+            if "memory_diffs" in have_tables:
+                conn.execute(
+                    "DELETE FROM memory_diffs WHERE proposal_id IN "
+                    "(SELECT proposal_id FROM memory_proposals "
+                    "WHERE st_record_id = ?)",
+                    (record_id,),
+                )
+            conn.execute(
+                "DELETE FROM memory_proposals WHERE st_record_id = ?",
+                (record_id,),
+            )
+        cur = conn.execute("DELETE FROM st_records WHERE id = ?", (record_id,))
+        deleted = cur.rowcount
+        conn.commit()
+        return deleted
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def sync_fts_to_base(conn) -> int:
+    """Remove orphaned shadow rows whose parent record no longer exists.
+
+    Reconciles st_records_fts, st_tags, and memory_proposals. Returns the
+    number of orphaned rows removed. Idempotent.
+    """
+    cur = conn.cursor()
+    before = conn.total_changes
+    cur.execute(
+        "DELETE FROM st_records_fts WHERE id NOT IN (SELECT id FROM st_records)"
+    )
+    cur.execute(
+        "DELETE FROM st_tags WHERE record_id NOT IN (SELECT id FROM st_records)"
+    )
+    cur.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' "
+        "AND name IN ('memory_proposals','memory_diffs')"
+    )
+    have_tables = {r[0] for r in cur.fetchall()}
+    if "memory_proposals" in have_tables:
+        if "memory_diffs" in have_tables:
+            cur.execute(
+                "DELETE FROM memory_diffs WHERE proposal_id IN "
+                "(SELECT p.proposal_id FROM memory_proposals p "
+                "WHERE p.st_record_id NOT IN (SELECT id FROM st_records))"
+            )
+        cur.execute(
+            "DELETE FROM memory_proposals WHERE st_record_id "
+            "NOT IN (SELECT id FROM st_records)"
+        )
+    conn.commit()
+    return conn.total_changes - before
 
 
 def generate_id():
@@ -801,6 +890,16 @@ def cmd_get_decision(args):
         conn.close()
 
 
+def cmd_delete(args):
+    """Delete a record via delete_record() so dependent rows stay consistent."""
+    try:
+        deleted = delete_record(args.id)
+    except Exception as e:
+        print(json.dumps({"ok": False, "error": str(e)}))
+        sys.exit(1)
+    print(json.dumps({"ok": True, "id": args.id, "deleted": deleted}))
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
         description="Short-term memory CLI for agent OS (P9 WP1)"
@@ -927,6 +1026,12 @@ def build_parser():
     )
     p_gd.add_argument("--fingerprint", required=True)
 
+    # delete
+    p_del = subparsers.add_parser(
+        "delete", help="Delete a record and its FTS/tag/cluster entries"
+    )
+    p_del.add_argument("--id", required=True, help="Record id to delete")
+
     return parser
 
 
@@ -947,6 +1052,7 @@ COMMAND_MAP = {
     "set-decision": cmd_set_decision,
     "get-decisions": cmd_get_decisions,
     "get-decision": cmd_get_decision,
+    "delete": cmd_delete,
 }
 
 

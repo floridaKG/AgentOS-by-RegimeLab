@@ -29,6 +29,14 @@ This is a **harness**, not a framework. Frameworks are libraries you import.
 The harness is the OS agents run on top of. Agent OS owns the outcome,
 learns from its mistakes, and gets better every cycle.
 
+## Demo
+
+<video src="droid-wiki/video/overview.mp4" controls width="100%">
+  Your browser does not support the video tag. <a href="droid-wiki/video/overview.mp4">Download the demo video</a>.
+</video>
+
+*Agent OS overview — cross-agent memory, adversarial review, ACP dispatch, and the stumble pipeline in action. 5-minute walkthrough.*
+
 ## Features
 
 ### Agent Communication
