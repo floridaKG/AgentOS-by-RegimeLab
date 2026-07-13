@@ -10,12 +10,12 @@ uses basename-only resolution and over-reports broken links (see pitfalls). This
 mode goes deeper: correct resolution, source-type classification, rename-target
 verification, and MOC coverage measurement.
 
-## Do NOT use dream.py for the vault
+## Skip automated LLM pre-scans for the vault
 
-`dream.py` couples a deterministic sweep to a slow, rate-limited LLM loop and covers
-only ~40 files in 20 minutes. For a 600+ file graph, run a bare Python sweep with
-no LLM in the loop for Phase 1 (full coverage in seconds), then use the model only
-for classification and verification.
+Automated LLM crawls couple deterministic sweeps to slow, rate-limited LLM loops
+and cover only a small subset of files in a short time. For a 600+ file graph,
+run a bare Python sweep with no LLM in the loop for Phase 1 (full coverage
+in seconds), then use the model only for classification and verification.
 
 ## Obsidian wikilink resolution rules (get this wrong and every count is garbage)
 

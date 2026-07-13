@@ -10,11 +10,8 @@ governance so agents don't start every session cold.
 
 Agent OS exists to be the best agent-agnostic harness available.
 
-- **Agent-agnostic.** Any agent (Claude Code, Codex, Pi, Hermes, OpenCode, Droid\*)
+- **Agent-agnostic.** Any agent (Claude Code, Codex, OpenCode, and future models)
   participates as a first-class citizen. New models slot in without rewiring.
-
-> \* Droid is a proprietary agent runtime. Requires a Factory subscription
-> or bring-your-own-key (BYOK) configuration.
 - **Cross-agent memory.** Every agent contributes to shared memory. Stumbles are
   captured, reviewed, and promoted so all agents learn together.
 - **Multi-agent, multi-provider.** Agents call each other through ACP. Providers
@@ -62,7 +59,7 @@ and promotes selected knowledge into longer-lived stores.
 | Short-Term | SQLite (local) | **Always on** | Recent activity, lessons, stumbles, tool output |
 | Semantic | Pinecone (optional) | Off | Vector search for cross-session recall |
 | Graph | Neo4j (optional) | Off | Entity relationships, provenance, source tracking |
-| Advanced | Hindsight | Ships — requires Hermes + Hindsight API | Local conversation extraction and fact proposal via `memory/hindsight_bridge.py` |
+| Advanced | Hindsight | Deferred from v1 — not functional in public release | Requires Hermes + Hindsight API (private runtime); bridge file provided for reference only |
 
 ### Memory Profiles
 

@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 """hindsight_gc.py — lifecycle management for the Hindsight memory bank.
 
+DEFERRED FROM V1 OSS: This module requires the Hermes + Hindsight API stack,
+which is not part of the open-source Agent OS distribution. It is provided
+here for reference only.
+
+For local-core memory lifecycle management, use `stumble-triage` and
+`stumble-cleanup` which work with SQLite only.
+
+Original docstring follows:
+---
 Manages the Hindsight memory lifecycle: reporting stats, staleness probing,
 export backup, observation rebuild, and document pruning.
 

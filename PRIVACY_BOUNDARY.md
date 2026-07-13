@@ -87,7 +87,8 @@ The following patterns are always blocked:
 - `node_modules/`, `.venv/`, `__pycache__/`
 - `handoffs/`, `hermes-state/`, `state/`, `archive/`
 - `drafts/`, `proposals/`, `notes/`, `legacy/`
-- `droid-wiki/` (denylisted from build artifact only — ships via git for documentation and overview video)
+- `droid-wiki/` (excluded from public artifact — Factory-generated documentation with internal references)
+- `droid-wiki-new/`
 - `hooks/`, `acp/`, `config/`, `specs/`, `config.env`
 
 ## Release Scan Patterns

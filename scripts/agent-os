@@ -530,8 +530,6 @@ def cmd_skill_sync(args: argparse.Namespace) -> None:
         cmd_args.append("--check")
     if args.push:
         cmd_args.append("--push")
-    if args.no_droid:
-        cmd_args.append("--no-droid")
     rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
     handle_output(
         rc, out, json_mode=args.json, command_path=("skill", "sync"), quiet=args.quiet
@@ -1068,7 +1066,6 @@ def build_skill(sub) -> None:
     sp = sk_sub.add_parser("sync", help="Sync skills across camps", description=cmd_skill_sync.__doc__)
     sp.add_argument("--check", action="store_true", help="Check sync status")
     sp.add_argument("--push", action="store_true", help="Push changes across camps")
-    sp.add_argument("--no-droid", action="store_true", help="Skip Droid update")
     add_global_flags(sp)
     sp.set_defaults(func=cmd_skill_sync)
 

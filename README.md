@@ -2,17 +2,13 @@
 
 An agent-agnostic harness -- the OS agents run on.
 
-Agent OS is a CLI-first harness for orchestrating any AI coding agent
-(Claude Code, Codex, Pi, Hermes, OpenCode, Droid\*, and future models)
+Agent OS is a CLI-first harness for orchestrating supported AI coding agents
+(Claude Code, Codex, OpenCode, and future models)
 as first-class citizens in a shared, memory-driven system.
-
-> \* Droid is a proprietary agent runtime. It requires either a Factory
-> subscription or bring-your-own-key (BYOK) configuration. All other listed
-> agents are available to OSS users without additional subscription.
 
 ## Philosophy
 
-- **Agent-agnostic.** Any agent participates equally. Easy to incorporate
+- **Agent-agnostic.** Supported agents participate equally. Easy to incorporate
   new models without rewiring the system.
 - **Cross-agent memory.** Every agent contributes to shared memory.
   Stumbles are captured, reviewed, and promoted so all agents learn together.
@@ -23,19 +19,11 @@ as first-class citizens in a shared, memory-driven system.
 - **Agent voice.** Agents speak up about gaps and friction. The system
   listens and improves itself.
 - **Multi-provider orchestration.** MOE panels can combine Claude, Codex,
-  OpenCode, Pi, and compatible providers through user-editable configuration.
+  OpenCode, and compatible providers through user-editable configuration.
 
 This is a **harness**, not a framework. Frameworks are libraries you import.
 The harness is the OS agents run on top of. Agent OS owns the outcome,
 learns from its mistakes, and gets better every cycle.
-
-## Demo
-
-<video src="droid-wiki/video/overview.mp4" controls width="100%">
-  Your browser does not support the video tag. <a href="droid-wiki/video/overview.mp4">Download the demo video</a>.
-</video>
-
-*Agent OS overview — cross-agent memory, adversarial review, ACP dispatch, and the stumble pipeline in action. 5-minute walkthrough.*
 
 ## Features
 
@@ -44,15 +32,6 @@ learns from its mistakes, and gets better every cycle.
 - **ACP (Agent Communication Protocol)** — Route work to configured agents and workspaces. Fire-and-forget or wait-for-result dispatch with role-based routing and workspace awareness. Ships with `acp-task`, `acp-daemon`, and `acp-health` CLI tools.
 - **Agent Mail** — Async file-based messaging between agents. Send, inbox, and read messages without a running daemon. Lightweight and zero-dependency.
 - **Agent Voice** — Agents surface gaps, friction, and improvement suggestions. The system listens and improves itself.
-
-### Multi-Agent Reasoning
-
-- **Sidecar** — Pair a higher-reasoning DRIVER agent with a persistent cheap execution partner. The driver thinks; the sidecar executes.
-- **Sidecar Heavy** — The inverse: spawn a pure-reasoning heavy model (GPT-5.x, Claude Opus, etc.) that only thinks and advises. You and a cheap sidecar do the implementation. Consult on demand for plans, architecture decisions, and debugging hard problems.
-- **Upward Handoff** — One-shot document pass to a higher-reasoning model for fresh-eyes review.
-- **Adversarial Review** — Spawn a critic to find flaws in specs, decisions, or code.
-- **MOE Panels** — Run configurable multi-provider Mixture-of-Experts panels combining Claude, Codex, OpenCode, Pi, and compatible providers.
-- **Multi-Agent Workflows** — Swarm, council, and red-team patterns for parallel, adversarial, and iterative work.
 
 ## Quickstart
 
@@ -84,12 +63,11 @@ See `SETUP.md` for full instructions.
 | Memory (SQLite) | Core - always available | On |
 | Agent Communication Protocol (ACP) | Core - always available | On |
 | Agent Voice (agent feedback) | Core - always available | On |
-| MOE / multi-agent panels | Core orchestration | On (providers configured by user) |
-| ACPx (universal agent launcher) | External dependency (MIT) | Off (npm install acpx) |
-| CodeGraph (code structure queries) | External dependency | Off (npm install @codegraph/cli) |
+| ACPx (universal agent launcher) | External dependency (MIT) | Off (npm install -g acpx) |
+| CodeGraph (code structure queries) | External dependency | Off (npm install -g @codegraph/cli) |
 | Pinecone (semantic search) | Optional adapter | Off (needs API key) |
 | Neo4j (graph memory) | Optional adapter | Off (needs credentials) |
-| Hindsight (advanced memory) | Ships — requires Hermes + Hindsight API | `memory/hindsight_bridge.py` |
+| Hindsight (advanced memory) | Deferred from v1 — not functional in public release | Off |
 
 The default install works with zero external services. All adapters are optional.
 

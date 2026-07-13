@@ -139,7 +139,7 @@ Results: <N> (deduplicated from <M>)
 $AGENT_OS_HOME/scripts/skill-context.sh "<task text>" [budget_bytes]
 ```
 
-**When to use:** Called from deterministic dispatch paths (droid-exec, agent-workflow runner, sidecar) to auto-inject an actionable skill pack when skill-rank scores above 0.60. Not typically invoked directly by an agent — the threshold is deliberately stricter (0.60 vs 0.50) to avoid injecting the wrong skill.
+**When to use:** Called from deterministic dispatch paths (agent-workflow runner, sidecar) to auto-inject an actionable skill pack when skill-rank scores above 0.60. Not typically invoked directly by an agent — the threshold is deliberately stricter (0.60 vs 0.50) to avoid injecting the wrong skill.
 
 **Example (internal use):**
 ```bash
@@ -190,7 +190,7 @@ skill-context "deploy project-a to staging" 4000
 
 - **SIGPIPE on large files.** skill-pack's `extract_actionable` reads SKILL.md files via `while read` loops. If piped to `head -1` or `tail -n +2` under `set -o pipefail`, the script exits with 141 on files over ~10KB. Fix: capture output into a variable first, then split.
 - **Scripts without skills are invisible.** Creating the script is step 1. Step 2 is creating the SKILL.md. Step 3 is registering in skills.yaml. Skip any step and agents that don't already know about the tool can't discover it.
-- **Distribution is separate from creation.** After adding a skill, run `$AGENT_OS_HOME/scripts/build-skills-repo.sh` to include it in the distribution repo. Then sync to agent silos (symlinks for Claude Code/OpenCode, copies for Codex/Droid). The skill exists at the canonical path but agents in the "copy camp" won't see it until distribution runs.
+- **Distribution is separate from creation.** After adding a skill, run `$AGENT_OS_HOME/scripts/build-skills-repo.sh` to include it in the distribution repo. Then sync to agent silos (symlinks for Claude Code/OpenCode, copies for Codex). The skill exists at the canonical path but agents in the "copy camp" won't see it until distribution runs.
 - **skill-rank only finds registered skills.** If a skill isn't in `skills.yaml`, skill-rank won't score it. User-created skills outside the registry are invisible to skill-rank.
 
 ## Known limitations

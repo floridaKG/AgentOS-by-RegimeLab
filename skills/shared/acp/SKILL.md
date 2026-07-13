@@ -100,7 +100,6 @@ Do NOT use ACP for trivial lookups or anything you can answer locally faster.
 | pi | opencode/mimo-v2.5-free | Native Pi ACP role; session model is managed by Pi, not ACP `--model` |
 | escalation | codex/gpt-5.5[high] | Hard problems lower tiers cannot solve |
 | hard_escalation | claude/opus | Last resort, paid tier |
-| droid | custom:OpenCode-Zen-deepseek-v4-flash-free-0 | Automation, verification, QA/demo workflows |
 
 Fallback chains were removed on 2026-06-03 because the adapter only read the
 first configured model. If a role's model is unavailable, the task fails until
@@ -362,11 +361,10 @@ context is empty but the task still runs.
 
 ## Pitfalls
 
-- **Model selection differs by provider.** `codex`, `claude`, and `droid` are
+- **Model selection differs by provider.** `codex`, `claude`, and `opencode` are
   acp-flag providers, so their `roles.toml` model ids must match the live
   advertised catalog. `opencode` is config-only, the current `pi` ACP role may
-  also be routed through opencode config. See `capabilities.yaml` and
-  `references/model-selection.md` before claiming a role-model mapping works.
+  also be routed through opencode config.
 
 - **events.jsonl uses event field, not state.** When polling ACP runs programmatically, look for event: dispatch_completed
 
@@ -388,7 +386,7 @@ context is empty but the task still runs.
   unavailable, the task fails until `roles.toml` is changed.
 - **opencode is slow through ACP.** Expect ~130s response time on the free tier for opencode dispatches. If the current `pi` role is routed through opencode, expect opencode-like latency there too. claude is ~20-30s, codex ~15s. Set --timeout accordingly on acp-provider-smoke.
 
-- **Worker timeout is 600s (10 min); escalation is 1800s.** All worker roles (executor, explorer, reviewer, pi, droid) get 600s in `acp_to_run_agent.sh`. Escalation/hard_escalation get 1800s. If a task fails with `worker_timeout`, the task was too broad — break it into focused pieces. Even with 600s, complex multi-step tasks (read files, run scripts, verify, write summary) benefit from decomposition: dispatch "answer questions" as one task, "verify and fix findings" as a second. Each piece should be self-contained.
+- **Worker timeout is 600s (10 min); escalation is 1800s.** All worker roles (executor, explorer, reviewer, pi) get 600s in `acp_to_run_agent.sh`. Escalation/hard_escalation get 1800s. If a task fails with `worker_timeout`, the task was too broad — break it into focused pieces. Even with 600s, complex multi-step tasks (read files, run scripts, verify, write summary) benefit from decomposition: dispatch "answer questions" as one task, "verify and fix findings" as a second. Each piece should be self-contained.
 
 - **Task decomposition for free-tier workers.** Free-tier models are slower than paid. A task that takes Claude 20s might take a free model 120s. When dispatching complex work (spec execution, multi-file review + action), break it into 2-3 focused dispatches rather than one monolith. Example: (1) "read X and answer Q1-Q7", (2) "verify F1-F12 and fix what's broken", (3) "write summary". Each completes within the timeout.
 

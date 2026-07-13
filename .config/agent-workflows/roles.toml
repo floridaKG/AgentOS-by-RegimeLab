@@ -1,5 +1,6 @@
 # Portable agent workflow role assignments.
 # Replace provider/model values with IDs advertised by your installed CLIs.
+# Supported providers: opencode, codex, claude
 
 [explorer]
 model = "default"
@@ -35,11 +36,6 @@ cost = "user-configured"
 model = "default"
 provider = "claude"
 cost = "user-configured"
-
-[cline]
-model = "default"
-provider = "cline"
-cost = "free"
 
 [workspaces]
 home = { path = "$AGENT_OS_HOME" }

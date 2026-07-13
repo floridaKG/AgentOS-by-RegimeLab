@@ -89,7 +89,7 @@ def _load_roles():
             "code_reviewer": {"default": "opencode", "model": "mimo-v2.5-free"},
             "escalation": {"default": "codex", "model": "gpt-5.5"},
             "hard_escalation": {"default": "claude", "model": "opus"},
-            "droid": {"default": "opencode", "model": "deepseek-v4-flash-free"},
+            # "droid" removed — not in the public supported agent set
         }
     try:
         import tomllib  # Python 3.11+

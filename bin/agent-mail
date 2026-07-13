@@ -10,7 +10,7 @@
 #   agent-mail inbox [--agent <name>]
 #   agent-mail read <message-id>
 #
-# Supported agents: claude, codex, opencode, droid
+# Supported agents: claude, codex, opencode
 #
 
 set -euo pipefail
@@ -29,7 +29,7 @@ if [[ -z "$AGENT_OS_HOME" ]]; then
 fi
 
 MAIL_DIR="$AGENT_OS_HOME/.local/state/agent-os/agent-mail"
-SUPPORTED_AGENTS=("claude" "codex" "opencode" "droid")
+SUPPORTED_AGENTS=("claude" "codex" "opencode")
 
 mkdir -p "$MAIL_DIR"
 

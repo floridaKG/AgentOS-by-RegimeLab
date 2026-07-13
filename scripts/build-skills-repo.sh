@@ -5,8 +5,6 @@
 # Generated distribution repo: $AGENT_OS_HOME/agent-os-skills
 #
 # Serves the "install camp" agents that cannot dir-scan the canonical path:
-#   - Droid : `droid plugin marketplace add <git-url>` then `droid plugin install agent-os-shared@agent-os-skills`
-#             (reads .factory-plugin/marketplace.json + plugins/agent-os-shared/.factory-plugin/plugin.json)
 #   - Codex : `install-skill-from-github.py --repo YOUR_GITHUB_ORG/agent-os-skills --path plugins/agent-os-shared/skills/<name>`
 #   - Claude Code (alt to symlinks): `claude plugin marketplace add <git-url>` then install agent-os-shared
 #             (reads .claude-plugin/marketplace.json + plugins/agent-os-shared/.claude-plugin/plugin.json)
@@ -24,7 +22,7 @@ ARCHIVE="$PLUGIN/archive"
 # Skill list is DERIVED from canonical, not hardcoded: every shared skill whose
 # SKILL.md frontmatter status is NOT deprecated/retired/disabled/inactive is
 # distributed. This is the same is_active() rule skills-sync.sh uses, so a new
-# active skill auto-distributes to the copy camp (Codex/Droid) and a deprecated
+# active skill auto-distributes to the copy camp (Codex) and a deprecated
 # one (e.g. 'now', rtk) auto-drops — no manual array edit, no two-camps drift.
 # (History: rtk removed 2026-06-04 — ambient boot behavior, not a skill; this
 # array was static through 2026-06-10 and silently dropped agent-os-governance-review,
@@ -37,7 +35,7 @@ mapfile -t SKILLS < <(for d in "$SRC"/*/; do d="${d%/}"; [ -f "$d/SKILL.md" ] &&
 [ "${#SKILLS[@]}" -gt 0 ] || { echo "FATAL: no active skills under $SRC" >&2; exit 2; }
 
 echo "Regenerating $REPO from $SRC ..."
-mkdir -p "$REPO/.claude-plugin" "$REPO/.factory-plugin" "$PLUGIN/.claude-plugin" "$PLUGIN/.factory-plugin"
+mkdir -p "$REPO/.claude-plugin" "$PLUGIN/.claude-plugin"
 
 # --- skills: clean copy from canonical (resolve symlinks with -L) ---
 mkdir -p "$PLUGIN" "$ARCHIVE"
@@ -71,38 +69,13 @@ cat > "$REPO/.claude-plugin/marketplace.json" <<'JSON'
 }
 JSON
 
-# --- Droid (Factory) marketplace manifest ---
-cat > "$REPO/.factory-plugin/marketplace.json" <<'JSON'
-{
-  "name": "agent-os-skills",
-  "description": "Agent OS shared skills marketplace - portable cross-agent harness skills.",
-  "owner": { "name": "YOUR_GITHUB_ORG", "email": "your-github-email@example.com" },
-  "plugins": [
-    {
-      "name": "agent-os-shared",
-      "description": "The Agent OS os-shared skills. Portable floor: each needs only shell + file primitives.",
-      "source": "./plugins/agent-os-shared",
-      "category": "core"
-    }
-  ]
-}
-JSON
-
-# --- plugin manifests (both ecosystems, coexisting) ---
+# --- plugin manifests ---
 cat > "$PLUGIN/.claude-plugin/plugin.json" <<'JSON'
 {
   "name": "agent-os-shared",
   "version": "0.1.0",
   "description": "Agent OS os-shared skills - portable across agents (shell + file primitives).",
   "author": { "name": "YOUR_GITHUB_ORG" }
-}
-JSON
-
-cat > "$PLUGIN/.factory-plugin/plugin.json" <<'JSON'
-{
-  "name": "agent-os-shared",
-  "description": "Agent OS os-shared skills - portable across agents (shell + file primitives).",
-  "author": { "name": "YOUR_GITHUB_ORG", "email": "your-github-email@example.com" }
 }
 JSON
 
@@ -126,13 +99,7 @@ camp (Pi, Claude Code, OpenCode) reads the canonical path / symlinks live and do
 
 ## Install
 
-**Droid**
-```
-droid plugin marketplace add https://github.com/YOUR_GITHUB_ORG/agent-os-skills.git
-droid plugin install agent-os-shared@agent-os-skills
-```
-
-**Codex** (per skill, or loop the 13)
+**Codex** (per skill, or loop the skills)
 ```
 $AGENT_OS_HOME/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py \
   --repo YOUR_GITHUB_ORG/agent-os-skills --path plugins/agent-os-shared/skills/recall
@@ -148,11 +115,9 @@ claude plugin install agent-os-shared@agent-os-skills
 ## Layout
 ```
 .claude-plugin/marketplace.json     # Claude Code marketplace
-.factory-plugin/marketplace.json    # Droid (Factory) marketplace
 plugins/agent-os-shared/
   ├─ .claude-plugin/plugin.json
-  ├─ .factory-plugin/plugin.json
-  └─ skills/<name>/SKILL.md          # the 16 skills (copied from canonical)
+  └─ skills/<name>/SKILL.md          # the skills (copied from canonical)
 ```
 MD
 

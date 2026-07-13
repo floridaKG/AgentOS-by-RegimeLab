@@ -49,9 +49,9 @@ credentials are required.
 - **Neo4j** (`adapters/neo4j/`): Graph relationship storage for structured
   memory queries. Activated when `NEO4J_URI` is set.
 
-### Deferred (not in v1)
+### Deferred (not in v1 OSS)
 
-- **Hindsight**: Requires Hermes + Hindsight API. Configured via `memory/hindsight_bridge.py` and `memory/hindsight_gc.py`. Set `HINDSIGHT_API_URL` and `HINDSIGHT_BANK` env vars.
+- **Hindsight**: The `hindsight_bridge.py` and `hindsight_gc.py` modules are DEFERRED FROM V1. They require Hermes + Hindsight API, which is not bundled with the open-source distribution. These files are provided for reference only. For core memory operations, use `memory-st` and `recall` (SQLite-based).
 
 ## Environment Variables
 

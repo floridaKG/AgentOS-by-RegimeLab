@@ -102,8 +102,8 @@ or a naming mismatch.
 - **Registry fields have different meanings.** `native_loaders` is the current
   installed/configured mechanism field. `discoverable_by` is legacy/cosmetic
   and appears to be a rendering directive, not a functional permission boundary.
-- **Configured does not mean direct invocation proven.** Treat Pi and Droid as
-  configured/installed for os-shared skills until a live native invocation probe
+- **Configured does not mean direct invocation proven.** Treat Pi and other installed
+  agents as configured for os-shared skills until a live native invocation probe
   proves the skill loads in that agent surface.
 - **Name collisions.** `pinecone-search` and `pinecone-upsert` os-shared skills
   can collide with MCP Pinecone tool names (`pinecone-search-records`,

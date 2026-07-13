@@ -1,10 +1,15 @@
 ---
 name: codegraph-tools
 description: Use CodeGraph for structural code queries (callers, callees, impact, trace, definition) instead of multi-call grep/read chains. Pre-indexed code knowledge graph. Saves 3-8 tool calls per structural query. MCP tools where available, CLI everywhere.
-last_reviewed: 2026-06-15
+last_reviewed: 2026-07-13
 ---
 
 # CodeGraph Tools
+
+**CodeGraph is an OPTIONAL external dependency.** It is NOT bundled with Agent OS
+and must be installed separately via `npm install -g @codegraph/cli`. Without
+CodeGraph, Agent OS agents fall back to grep/read chains for structural code
+queries. No functionality is lost — structural queries just take more tool calls.
 
 CodeGraph is a pre-indexed code knowledge graph (Tree-sitter → SQLite). It answers
 *structural* questions — who calls X, what X calls, what breaks if X changes, how X

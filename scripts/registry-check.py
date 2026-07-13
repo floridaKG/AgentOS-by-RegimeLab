@@ -174,6 +174,9 @@ def check_skills_paths(skills_path: Path) -> list[dict]:
         path_val = entry.get("path")
         if not path_val or not isinstance(path_val, str):
             continue
+        # Resolve $AGENT_OS_HOME if env var is not set
+        if "$AGENT_OS_HOME" in path_val and "AGENT_OS_HOME" not in os.environ:
+            path_val = path_val.replace("$AGENT_OS_HOME", str(COCKPIT))
         # Expand ~/ and <vault> prefixes
         expanded = os.path.expandvars(path_val)
         if expanded.startswith("~/"):

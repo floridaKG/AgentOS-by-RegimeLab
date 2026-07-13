@@ -20,3 +20,5 @@ __pycache__/
 credential*.json
 node_modules/
 .venv/
+droid-wiki/
+droid-wiki-new/

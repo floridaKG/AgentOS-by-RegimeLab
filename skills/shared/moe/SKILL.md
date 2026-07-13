@@ -44,7 +44,7 @@ Configuration lives in `~/.config/agent-workflows/panels.toml` and
 
 **MOE 1/2/2r/3/P all run today**, plus the `research` profile. `/moe` with no
 argument fires MOE 1. Inline agent/model swap: `/moe 2 claude opus high, codex
-gpt-5.5 med, droid go high`. `/moe 2r` runs a read-only audit swarm. `/moe 3
+gpt-5.5 med, pi opencode-go/deepseek-v4-flash low`. `/moe 2r` runs a read-only audit swarm. `/moe 3
 collaborate|redteam` fire the persistent panels. `team fire --pipeline <name>`
 runs a sequential role pipeline.
 
@@ -55,7 +55,7 @@ runs a sequential role pipeline.
 | `/moe` or `moe` | `team fire --tier 1 --panel quick --task "<text>"` | **Default — LIVE** |
 | `/moe 1` or `moe quick` | Same as default (explicit) | **LIVE** |
 | `/moe 2` or `/moe 2 swarm` | `team fire --tier 2 --panel swarm --task "<text>"` | **LIVE** |
-| `/moe 2 <inline>` | `team fire --members "claude opus high, codex gpt-5.5 med, droid kimi-k2.7 low" --task "<text>"` | **LIVE — inline agent+model swap** |
+| `/moe 2 <inline>` | `team fire --members "claude opus high, codex gpt-5.5 med, pi opencode-go/deepseek-v4-flash low" --task "<text>"` | **LIVE — inline agent+model swap** |
 | `/moe 2r` | `team fire --tier 2r --panel swarm_readonly --task "<text>"` | **LIVE — read-only audit swarm (`ranked_issues`)** |
 | `/moe 2r <inline>` | `team fire --tier 2r --members "claude opus high, codex gpt-5.5 med" --task "<text>"` | **LIVE — inline read-only swarm** |
 | `/moe 3` or `moe 3 collaborate` | `team fire --tier 3 --panel persistent_collaborate --task "<text>"` | **LIVE — iterative collaborate** |
@@ -77,7 +77,7 @@ team fire --tier 1 --panel quick --task "<text>" [--dry-run] [--json]
 # MOE 2 (Swarm) with default panel
 team fire --tier 2 --panel swarm --task "<text>" [--dry-run] [--json]
 # MOE 2 with inline agent/model swap
-team fire --members "claude opus high, codex gpt-5.5 med, droid go high" --task "<text>" [--dry-run] [--json]
+team fire --members "claude opus high, codex gpt-5.5 med, pi opencode-go/deepseek-v4-flash low" --task "<text>" [--dry-run] [--json]
 # MOE 3 (Persistent) — iterative rounds
 team fire --tier 3 --panel persistent_collaborate --task "<text>" [--dry-run] [--json]
 team fire --tier 3 --panel persistent_redteam --task "<text>" [--dry-run] [--json]
@@ -108,11 +108,10 @@ team aliases --refresh
 
 `--members "<provider> [model] [reasoning], <provider> [model] [reasoning], ..."`
 
-- **Provider:** `claude`, `codex`, `droid`, `pi`, `opencode` (must be a known provider)
+- **Provider:** `claude`, `codex`, `pi`, `opencode` (must be a known provider)
 - **Model (optional):** friendly alias; resolved via `model_aliases.toml`
   - codex: `gpt-5.5`, `gpt-5.5 med`, `gpt-5.5 high`, `gpt-5.5 xhigh`, `4o`
   - claude: `default`, `opus`, `haiku`, `sonnet`
-  - droid: `go` (deepseek-v4-pro-0), `deepseek-v4-flash`, `deepseek`, `kimi-k2.7`
   - pi: `opencode-go/deepseek-v4-pro`, `opencode-go/mimo-v2.5-pro`, `opencode-go/minimax-m3`, `opencode-go/deepseek-v4-flash`
 - **Reasoning (optional):** `low`, `med`/`medium`, `high`, `xhigh`
 - Unresolved aliases → error with valid options listed; never silently falls back.
@@ -188,7 +187,7 @@ action.
 
 ### Members time out (ACP startup overhead)
 
-ACP session startup (Pi/Droid adapters) is slower than raw LLM calls.
+ACP session startup (Pi adapters) is slower than raw LLM calls.
 All panels and inline dispatch have generous timeouts to account for this,
 but if you're adding a new panel or provider, the defaults may bite you.
 
@@ -209,8 +208,8 @@ but if you're adding a new panel or provider, the defaults may bite you.
 ```
 
 For `opencode-go` model IDs (Pi/acpx path), 180s is usually sufficient.
-For droid (acp-to-droid), the adapter negotiates model catalog + session
-before the prompt — 300s is safer.
+ACP adapters that negotiate model catalog + session before the prompt may
+need 300s.
 
 ### Diversity check was removed (2026-06-16)
 
@@ -231,10 +230,9 @@ need provider separation.
 If you want multi-backend diversity anyway, use MOE 2 with mixed providers:
 ```
 team fire --tier 2 --members \
-  "droid deepseek-v4-flash low, pi opencode-go/mimo-v2.5-pro low, pi opencode-go/minimax-m3 low"
+  "pi opencode-go/deepseek-v4-flash low, pi opencode-go/mimo-v2.5-pro low, pi opencode-go/minimax-m3 low"
 ```
-`droid` routes via acp-to-droid (OpenCode Go backend), `pi` routes via acpx.
-Two providers = guaranteed platform diversity regardless of check state.
+All three members route via acpx with different model backends.
 
 ### Default members jump across providers (2026-06-16)
 

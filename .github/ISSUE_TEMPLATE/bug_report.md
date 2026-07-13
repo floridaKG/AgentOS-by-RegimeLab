@@ -20,7 +20,7 @@ What you expected to happen instead.
 - OS: [e.g. Ubuntu 24.04, macOS 14]
 - Agent OS version (commit hash):
 - Python version:
-- Agent used (if relevant): [e.g. Claude Code, Codex, Droid, Hermes]
+- Agent used (if relevant): [e.g. Claude Code, Codex, OpenCode]
 
 **Additional context**
 Any other context about the problem.

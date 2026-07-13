@@ -409,7 +409,7 @@ def main():
     for i, arg in enumerate(sys.argv[1:], 1):
         if arg == "--agent" and i < len(sys.argv) - 1:
             agent = sys.argv[i + 1]
-            if agent not in ("cc", "codex", "pi", "droid"):
+            if agent not in ("cc", "codex", "pi"):
                 agent = "cc"
 
     start_ms = _now_ms()

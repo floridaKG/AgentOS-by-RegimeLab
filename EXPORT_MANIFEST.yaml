@@ -23,10 +23,13 @@ allowlist:
     - RELEASE_READINESS.md
     - SETUP.md
     - install.sh
+    - .env.template
     - config.env.template
     - requirements.txt
     - CODE_OF_CONDUCT.md
     - CONTRIBUTING.md
+    - .gitattributes
+    - .gitignore
 
   # --- Bin (CLI entry points) ---
   bin:
@@ -115,10 +118,21 @@ allowlist:
       - adversarial-review
       - codegraph-tools
       - umbrella-refactor
+      - cline
+      - sidecar-heavy
     note: "Only the listed skills are curated for OSS. All others are excluded."
 
   # Personalized/domain-specific Vault skills are intentionally excluded.
   # The generic Vault scaffold ships under examples/vault-os/.
+
+  # --- GitHub templates and CI ---
+  github:
+    source: $AGENT_OS_HOME/.github
+    files:
+      - PULL_REQUEST_TEMPLATE.md
+      - workflows/ci.yml
+      - ISSUE_TEMPLATE/feature_request.md
+      - ISSUE_TEMPLATE/bug_report.md
 
   # --- Specs root directory ---
   specs_root:
@@ -224,6 +238,8 @@ allowlist:
       - privacy/privacy_gate.sh
       - smoke/cold_boot.sh
       - smoke/release_gate.sh
+      - smoke/acp_mock_test.sh
+      - smoke/test_mock_timeout.py
       - test-init-superdocs.sh
       - test-init-vault.sh
       - privacy/history_gate.sh
@@ -288,7 +304,7 @@ denylist:
     - proposals/
     - notes/
     - legacy/
-    - droid-wiki/       # Ships via git (documentation + overview video); excluded from staged build only
+    - droid-wiki/       # Factory-generated documentation — excluded from public artifact; contains internal references
     - droid-wiki-new/
     - prompts/
     - forge/

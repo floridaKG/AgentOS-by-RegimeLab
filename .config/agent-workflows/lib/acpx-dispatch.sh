@@ -43,16 +43,12 @@ acpx_dispatch() {
     local agent=""
 
     # ── Provider → agent mapping ──────────────────────────────────────────
-    # Provider-to-agent mapping: opencode|codex|claude|droid|pi|cline.
+    # Provider-to-agent mapping: opencode|codex|claude.
     # Any other provider returns exit 2 so the caller can use another adapter.
-    # Ported from PATH A ~line 95-101, PATH B ~line 93-101.
     case "$provider" in
         opencode) agent="opencode" ;;
         codex)    agent="codex" ;;
         claude)   agent="claude" ;;
-        droid)    agent="droid" ;;
-        pi)       agent="pi" ;;
-        cline)    agent="cline" ;;
         *)
             # Not an acpx agent — return 2 per spec contract
             return 2
@@ -65,7 +61,7 @@ acpx_dispatch() {
     local args=(--format json --approve-all)
 
     # ── Model selection ────────────────────────────────────────────────────
-    # acp-flag agents (claude/codex/droid): catalog probe before passing --model.
+    # acp-flag agents (claude/codex): catalog probe before passing --model.
     #   Ported from PATH A ~line 131-143 — safer than PATH B's blind pass.
     #   The probe validates the model is advertised, falls back to agent default
     #   on mismatch, logs warnings for operator awareness.
@@ -82,7 +78,7 @@ acpx_dispatch() {
     local model_to_apply=""
     if [ -n "$model" ]; then
         case "$provider" in
-            claude|codex|droid|cline)
+            claude|codex|cline)
                 # Catalog probe: validate model is advertised before applying it.
                 # acpx emits the catalog as JSON ("availableModels":[{"modelId":...}]),
                 # NOT "Available models:" — parse modelId entries (fixed 2026-06-17;
@@ -332,7 +328,7 @@ acpx_timeout_for_role() {
     local timeout=300  # default
 
     case "$role" in
-        executor|explorer|reviewer|code_reviewer|pi|droid)
+        executor|explorer|reviewer|code_reviewer|pi)
             timeout=180 ;;
         escalation|hard_escalation)
             timeout=1800 ;;

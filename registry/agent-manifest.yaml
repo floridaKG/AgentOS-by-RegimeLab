@@ -8,9 +8,9 @@ metadata:
   license: Apache-2.0
 
 summary:
-  skills: 10
-  tools: 21
-  workflows: 7
+  skills: 15
+  tools: 26
+  workflows: 9
   agents: 3
   mcp_servers: 0
   memory_tiers: 3

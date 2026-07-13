@@ -46,7 +46,7 @@ When the user wants multiple models to weigh in on a question, choose the cheape
 |------|-----------|------|---------|-------|-------------|
 | **MOE1 (quick moe)** | 3 free-model LLM calls in parallel, cheap paid judge, conditional rewrite. See `references/parallel-multi-model-panel.md`. | ~$0.01-0.05 | 20-30s | None | "Quick take on this idea" / "what do you think" / spec text review with no codebase context. Daily driver. |
 | **Swarm (multi-agent)** | 2-4 real ACP agents in parallel, each with full tool autonomy, reviewer synthesis. | ~$0.30-2 | 60-120s | Full (grep, codegraph, memory, web) | "Review the spec against the live codebase" / "find all the places that use the old API." Each agent pulls its own context. |
-| **MOE2 (provider-diverse panel)** | Swarm with a `roles.toml` profile that pre-binds 3-4 different providers (e.g. Opus + GPT-5.5 + Droid). Same engine as swarm, different slot bindings. | ~$0.50-2 | 60-120s | Full | "Have Opus, GPT-5.5, and Droid each review this refactor" / research with each panelist pulling from a different source. |
+| **MOE2 (provider-diverse panel)** | Swarm with a `roles.toml` profile that pre-binds 3-4 different providers (e.g. Opus + GPT-5.5 + opencode-go). Same engine as swarm, different slot bindings. | ~$0.50-2 | 60-120s | Full | "Have Opus, GPT-5.5, and opencode-go each review this refactor" / research with each panelist pulling from a different source. |
 
 **Triage rule:** Try MOE1 first. If the user pushes back ("missed X", "didn't look at Y", "needs to read the actual code"), escalate to swarm/MOE2. Do not skip tiers unless the user explicitly names the providers they want.
 

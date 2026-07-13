@@ -56,16 +56,16 @@ cost = "paid"
 
 [reviewer]
 model = "custom:OpenCode-Zen-deepseek-v4-flash-free-0"
-provider = "droid"
+provider = "opencode"
 cost = "free"
 ```
 
-That single edit turns `agent-workflow swarm` into a 3-provider panel (Opus + GPT-5.5 + Droid) without changing the engine.
+That single edit turns `agent-workflow swarm` into a 3-provider panel (Opus + GPT-5.5 + opencode-go) without changing the engine.
 
 **Use cases for MOE2:**
-- Code refactor review: "Have Opus, GPT-5.5, and Droid each review this diff"
+- Code refactor review: "Have Opus, GPT-5.5, and opencode-go each review this diff"
 - Research: each panelist pulls from a different source (GitHub, arXiv, internal docs)
-- Architecture decision: Opus designs, GPT-5.5 stress-tests, Droid verifies
+- Architecture decision: Opus designs, GPT-5.5 stress-tests, opencode-go verifies
 - Spec review: same shape, but reviewers are bound to the same providers the user trusts for code
 
 **Activation:** `/moe2` slash command that pre-sets a roles.toml profile before calling `agent-workflow swarm` or `agent-workflow council`. Or: a `moe-research` profile that uses `team` as the orchestrator with research-specific role bindings.

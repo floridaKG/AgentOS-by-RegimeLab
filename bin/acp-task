@@ -32,7 +32,7 @@ ROLES_FILE="$AGENT_OS_HOME/.config/agent-workflows/roles.toml"
 SEND_SCRIPT="$AGENT_OS_HOME/.config/agent-workflows/acp/acp_send.py"
 COMPLETION_SCRIPT="$AGENT_OS_HOME/.config/agent-workflows/acp/acp_completion.py"
 
-VALID_ROLES=("executor" "explorer" "architect" "reviewer" "code_reviewer" "escalation" "hard_escalation" "droid")
+VALID_ROLES=("executor" "explorer" "architect" "reviewer" "code_reviewer" "escalation" "hard_escalation")
 VALID_WORKSPACES=("home" "project-a" "project-b" "vault")
 
 # ── Color helpers ───────────────────────────────────────────────────────

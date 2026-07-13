@@ -126,10 +126,9 @@ _validate() {
         echo "provider_failure_detected"; return 1
     fi
     # Provider error PAYLOAD returned with exit 0 (false-success trap): some adapters
-    # (e.g. droid without a Factory subscription) emit an HTTP error body as the
-    # answer text and exit 0, which would otherwise be counted as a successful,
-    # "diverse" member. Reject specific provider-error signatures. These phrases do
-    # not occur in normal answer prose. (Review B1, 2026-06-16.)
+    # emit an HTTP error body as the answer text and exit 0, which would otherwise be
+    # counted as a successful, "diverse" member. Reject specific provider-error
+    # signatures. These phrases do not occur in normal answer prose.
     if grep -qiE "(payment required|no active subscription|insufficient credits|\"status\":[[:space:]]*4[0-9][0-9]|^error: [45][0-9][0-9]([[:space:]]|$)|402 payment|subscribe to start using)" "$out" 2>/dev/null; then
         echo "provider_error_payload"; return 1
     fi
@@ -140,16 +139,13 @@ _validate() {
 # Run a single (provider, model) attempt. Writes to $out_file on success.
 # Dispatches via acpx (the same path as acp_to_run_agent.sh) so the .sh workflows
 # share ONE dispatch mechanism and ONE model-id convention with the ACP capability
-# layer. acp-flag agents (claude/codex/droid) get --model; opencode is config-only.
-# NOTE: `pi` below is the native pi acpx agent (provider=pi). The ACP *role* `pi`
-# in roles.toml now maps to provider=pi, so this arm is the live native path.
-# Pi is session-configured rather than --model-driven in ACP dispatch.
+# layer. Supported agents: claude, codex, opencode.
 _run_one() {
     local provider="$1" model="$2" title="$3" prompt_file="$4" out_file="$5"
 
     # Provider validation — write error to out_file for _validate to catch.
     case "$provider" in
-        opencode|codex|claude|droid|pi|cline) ;;
+        opencode|codex|claude) ;;
         *)
             echo "ERROR: unknown provider '$provider'" > "$out_file"
             return 0
@@ -161,14 +157,6 @@ _run_one() {
     # ROLE_TIMEOUT_S = PATH B's uniform 300s cap (NOT role-based caps from A).
     acpx_dispatch "$provider" "$model" "$prompt_file" "$out_file" "$ROLE_TIMEOUT_S" ""
 
-    # Clean Pi transport text from assembled output for provider=pi.
-    if [ "$provider" = "pi" ] && [ -f "$out_file" ]; then
-        local cleaner="${AGENT_OS_HOME:-}/scripts/clean_pi_output.py"
-        if [ -f "$cleaner" ]; then
-            python3 "$cleaner" < "$out_file" > "${out_file}.tmp" 2>/dev/null || true
-            mv "${out_file}.tmp" "$out_file" 2>/dev/null || true
-        fi
-    fi
     return 0
 }
 
@@ -271,7 +259,7 @@ run_role() {
 
 # Run a single member (like _run_one but with validation and logging).
 # Signature: run_member <provider> <model> <title> <prompt_file> <out_file> [readonly]
-#   provider   - one of: opencode, codex, claude, droid, pi
+#   provider   - one of: opencode, codex, claude
 #   model      - model identifier (e.g. deepseek-v4-flash)
 #   title      - human-readable label for this attempt
 #   prompt_file - path to prompt file
@@ -288,9 +276,9 @@ run_member() {
 
     # Validate provider is in the allowed enum FIRST
     case "$provider" in
-        opencode|codex|claude|droid|pi|cline) ;;
+        opencode|codex|claude) ;;
         *)
-            echo "ERROR: unknown provider '$provider'. Allowed providers: opencode, codex, claude, droid, pi, cline" >&2
+            echo "ERROR: unknown provider '$provider'. Allowed providers: opencode, codex, claude" >&2
             printf '{"ts":"%s","provider":"%s","model":"%s","status":"failed","duration_s":0,"bytes":0,"error_class":"invalid_provider"}\n' \
                 "$(date -u +%FT%TZ)" "$provider" "$model" >> "$RUN_LOG"
             return 1

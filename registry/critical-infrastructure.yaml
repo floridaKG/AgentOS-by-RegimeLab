@@ -37,7 +37,7 @@ entries:
   # - path: "$AGENT_OS_HOME/agent-os/memory/core/recall_hook.py"
   #   role: "Bounded automatic memory recall for interactive agent hosts"
   #   callers:
-  #     - "$AGENT_OS_HOME/bin/droid-exec"
+  #     - "$AGENT_OS_HOME/bin/some-exec-path"
   #   tests:
   #     - "python3 $AGENT_OS_HOME/tests/test_recall_hook.py"
   #   regression_classes: ["memory_recall"]

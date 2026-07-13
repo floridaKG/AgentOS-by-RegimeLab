@@ -2,6 +2,8 @@
 # Agent OS Installer
 # Idempotent setup. Defaults to local-core memory profile (SQLite only).
 # Supports non-interactive test mode: AGENT_OS_TEST=1 ./install.sh
+# Optional flags:
+#   --with-rtk    Install RTK (Rust Token Killer) CLI proxy (requires curl)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,6 +13,25 @@ CONFIG_FILE="${CONFIG_DIR}/config.env"
 SECRETS_FILE="${CONFIG_DIR}/secrets.env"
 WORKFLOW_CONFIG_DIR="${HOME}/.config/agent-workflows"
 TEST_MODE="${AGENT_OS_TEST:-0}"
+WITH_RTK=0
+
+# Parse flags
+for arg in "$@"; do
+  case "$arg" in
+    --with-rtk) WITH_RTK=1 ;;
+    --help|-h)
+      echo "Usage: ./install.sh [--with-rtk]"
+      echo ""
+      echo "  --with-rtk  Install RTK (Rust Token Killer) CLI proxy (requires curl)"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $arg"
+      echo "Usage: ./install.sh [--with-rtk]"
+      exit 1
+      ;;
+  esac
+done
 
 pass() { echo "  PASS: $1"; }
 fail() { echo "  FAIL: $1"; exit 1; }
@@ -41,16 +62,22 @@ PY_VERSION=$($PYTHON --version 2>&1 | awk '{print $2}')
 info "Python: $PY_VERSION"
 pass "Python found"
 
-if command -v node >/dev/null 2>&1; then
-  info "Node.js: $(node --version 2>&1)"
-else
-  info "Node.js: not found (optional)"
-fi
-
 if command -v git >/dev/null 2>&1; then
   info "Git: $(git --version 2>&1)"
 else
-  info "Git: not found (optional)"
+  fail "Git is required (not found). Install: apt install git / brew install git"
+fi
+
+if command -v bash >/dev/null 2>&1; then
+  info "Bash: ${BASH_VERSION}"
+else
+  fail "Bash is required (not found)"
+fi
+
+if command -v node >/dev/null 2>&1; then
+  info "Node.js: $(node --version 2>&1) (optional — needed for ACPx/CodeGraph plugins)"
+else
+  info "Node.js: not found (optional — needed for ACPx/CodeGraph plugins)"
 fi
 
 # ── Verify repo structure ──
@@ -243,13 +270,16 @@ fi
  # ── Optional: RTK (Rust Token Killer) ──
  echo ""
  echo "--- Optional: RTK (Rust Token Killer) ---"
- echo "  RTK is a CLI proxy that reduces LLM token consumption by 60-90%"
- echo "  by filtering command outputs before they reach your AI agent."
- echo "  It's recommended but not required."
- echo "  (Apache 2.0 — github.com/rtk-ai/rtk — external project, not created by Agent OS)"
- echo ""
- if [ "$TEST_MODE" = "1" ]; then
+ if [ "$WITH_RTK" != "1" ]; then
+   echo "  RTK not requested. To install: ./install.sh --with-rtk"
+   echo "  RTK is a CLI proxy that reduces LLM token consumption by 60-90%"
+   echo "  by filtering command outputs before they reach your AI agent."
+   echo "  (Apache 2.0 — github.com/rtk-ai/rtk — external project, not created by Agent OS)"
+   echo "  Requires: curl"
+ elif [ "$TEST_MODE" = "1" ]; then
    skip "RTK installation (test mode)"
+ elif ! command -v curl >/dev/null 2>&1; then
+   fail "RTK installation requires curl (not found). Install: apt install curl / brew install curl"
  elif command -v rtk >/dev/null 2>&1; then
    pass "RTK already installed: $(rtk --version 2>&1)"
  else
@@ -280,7 +310,7 @@ echo "4. Verify: bash $AGENT_OS_HOME/scripts/agent-os-health.sh"
 echo "5. Read AGENTS.md to get started"
 echo ""
 echo "=== Optional Setup ==="
-echo "  RTK (token savings): brew install rtk  |  curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | sh"
-echo "  Knowledge vault:     bash scripts/init-vault.sh --create ~/my-vault"
-echo "  SuperDocs:           bash scripts/init-superdocs.sh --project my-project"
+echo "  RTK (token savings):   re-run with: ./install.sh --with-rtk"
+echo "  Knowledge vault:       bash scripts/init-vault.sh --create ~/my-vault"
+echo "  SuperDocs:             bash scripts/init-superdocs.sh --project my-project"
 echo ""

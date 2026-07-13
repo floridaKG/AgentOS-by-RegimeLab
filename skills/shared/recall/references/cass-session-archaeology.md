@@ -10,7 +10,7 @@ last_updated: 2026-06-09
 
 ## What It Is
 
-Rust binary from Dicklesworthstone that indexes and searches local coding agent session history across 11+ providers: Codex, Claude Code, Gemini CLI, Cline, OpenCode, Amp, Cursor, ChatGPT, Aider, Pi-Agent, GitHub Copilot Chat, Copilot CLI, OpenClaw, Clawdbot, Vibe, Crush, Hermes, Kimi Code, Qwen Code, Factory (Droid).
+Rust binary from Dicklesworthstone that indexes and searches local coding agent session history across 11+ providers: Codex, Claude Code, Gemini CLI, Cline, OpenCode, Amp, Cursor, ChatGPT, Aider, Pi-Agent, GitHub Copilot Chat, Copilot CLI, OpenClaw, Clawdbot, Vibe, Crush, Hermes, Kimi Code, Qwen Code, and others.
 
 **Key differentiator:** Cross-agent. Per-agent session_search tools only query their own state. CASS indexes ALL agent session formats into a single searchable timeline.
 

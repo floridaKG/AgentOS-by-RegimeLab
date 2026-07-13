@@ -23,7 +23,7 @@ ACP_ROOT = os.path.join(AGENT_OS_HOME, ".local", "state", "agent-os", "acp")
 INBOX_BASE = os.path.join(ACP_ROOT, "inboxes", "workspaces")
 RUNS_DIR = os.path.join(ACP_ROOT, "runs")
 
-VALID_ROLES = {"executor", "explorer", "architect", "reviewer", "code_reviewer", "escalation", "hard_escalation", "droid"}
+VALID_ROLES = {"executor", "explorer", "architect", "reviewer", "code_reviewer", "escalation", "hard_escalation"}
 VALID_STATES = {"queued", "claimed", "running", "review", "resume", "succeeded", "failed", "cancelled"}
 VALID_TRANSITIONS = {
     "queued": {"claimed"},

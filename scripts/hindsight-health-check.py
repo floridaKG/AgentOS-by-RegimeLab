@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 """Hindsight health check — verifies the full chain for a Hindsight memory backend.
 
+DEFERRED FROM V1 OSS: This health check requires the Hermes + Hindsight API stack,
+which is not bundled with the open-source Agent OS distribution.
+
+For core memory health checks, use `bash $AGENT_OS_HOME/scripts/agent-os-health.sh`.
+
+Original docstring follows:
+---
 Checks:
   1. Config exists and bank is reachable
   2. hindsight_client is installed

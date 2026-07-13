@@ -33,46 +33,42 @@ up when you see a gap (use `python3 $AGENT_OS_HOME/scripts/agent_voice.py emit`)
 2. **Simplicity First** — Minimum code that solves the problem. No speculative features.
 3. **Surgical Changes** — Touch only what you must. Don't improve adjacent code.
 4. **Goal-Driven Execution** — Define success criteria. Loop until verified.
-5. **Skill-Selection Convention** — Before loading any skill SKILL.md, run `skill-rank "<task>" --top 3 --json` to find the best match.
-6. **Verify Before Trusting** — If you read a doc that makes a factual claim, check the live state before acting.
+5. **Verify Before Trusting** — If you read a doc that makes a factual claim, check the live state before acting.
 
-7. **No Credential Exposure** — Never write API keys, tokens, SSH keys, or
+6. **No Credential Exposure** — Never write API keys, tokens, SSH keys, or
    passwords to files, logs, stdout, or any output that could be stored or
    transmitted. Use environment variables or `$AGENT_OS_HOME/config.env` /
    `secrets.env` for all sensitive values.
-8. **No Temp Writes** — Never write files to `/tmp` or other world-readable
+7. **No Temp Writes** — Never write files to `/tmp` or other world-readable
    directories. Use the workspace directory or
    `$AGENT_OS_HOME/.local/state/` for temporary storage.
-9. **Use RTK for Token Efficiency** — When `rtk` is available (`command -v rtk`),
-   prefer it over standard commands for file reads, directory listings, grep,
-   and git status. Falls back to standard commands automatically.
 
 ## Memory System (every agent, every session)
 
-The Agent OS memory system has multiple tiers. All agents should know these basics and contribute lessons.
+The Agent OS memory system provides local SQLite-based short-term memory. All agents can write and search lessons, stumbles, and decisions.
 
-### Tiers
+### Core Memory
 
 | Tier | Backend | Purpose |
 |---|---|---|
 | Short-Term SQLite | Local SQLite | Recent activity, lessons, stumbles |
+
+### Optional Memory Adapters
+
+| Tier | Backend | Purpose |
+|---|---|---|
 | Semantic (optional) | Pinecone | Vector search for cross-session recall |
 | Graph (optional) | Neo4j | Relationship-based memory queries |
+
+These require external service credentials and are not required for core operation.
 
 ### How agents interact with memory
 
 | Action | Command | Notes |
 |---|---|---|
 | Write a lesson/stumble | `memory-st write --intent LESSON --summary "..." --source-ref cli:...` | Use LESSON, STUMBLE, DECISION, CONFIRMED intents |
-| Search memory | `recall "query"` or `memory-lt search-vector --text "..."` | Semantic + FTS5 + graph search |
-| Check health | `bash $AGENT_OS_HOME/scripts/agent-os-health.sh` | All tiers should be GREEN |
-
-### Promotion pipeline
-
-Records with intent LESSON/STUMBLE/DECISION/CONFIRMED flow through:
-1. **Auto-promote** to Pinecone (if configured)
-2. **Graph-promote** to Neo4j (if configured)
-3. **Recall hook** injects memories into agent sessions
+| Search memory | `recall "query"` | Full-text search over local SQLite |
+| Check health | `bash $AGENT_OS_HOME/scripts/agent-os-health.sh` | Core tier should be GREEN |
 
 ### Memory docs
 

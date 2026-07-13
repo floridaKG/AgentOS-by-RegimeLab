@@ -981,7 +981,7 @@ def extract_model_ids_from_panels() -> Dict[str, List[str]]:
             if _is_plausible_model_id(mid):
                 result[current_panel].append(mid)
         # Match friendly model names in panel members
-        for friendly_m in re.finditer(r'"((?:claude|codex|droid)\s+\S+(?:\s+\S+)?)"', line):
+        for friendly_m in re.finditer(r'"((?:claude|codex)\s+\S+(?:\s+\S+)?)"', line):
             result[current_panel].append(friendly_m.group(1))
     return result
 

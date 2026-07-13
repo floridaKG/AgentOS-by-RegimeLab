@@ -11,16 +11,27 @@ external services.
 
 ## Prerequisites
 
+### Required
+
 - **Python 3.10+** — check with `python3 --version`
-- **Git** (optional) — needed for skill updates
-- **Node.js 18+** (optional) — needed for some plugins
+- **Git** — check with `git --version`
+- **Bash** — standard on Linux, macOS, and WSL2
 - **One LLM provider API key** — OpenAI, Anthropic, or OpenRouter-compatible
+
+### Optional
+
+- **curl** — needed only for RTK installation (`./install.sh --with-rtk`)
+- **Node.js 18+ and npm** — needed only for ACPx and CodeGraph plugins (not part of default install)
+- **Pinecone API key** — needed only for semantic memory (vector search across sessions)
+- **Neo4j credentials** — needed only for graph memory (relationship-based queries)
 
 ### Supported Platforms
 
-- Linux (Debian/Ubuntu, Fedora, Arch)
-- macOS (Homebrew or system Python)
-- WSL2 (Windows Subsystem for Linux — required for Windows users)
+| Platform | Status |
+|---|---|
+| Linux (Debian/Ubuntu, Fedora, Arch) | ✅ Tested |
+| WSL2 (Windows Subsystem for Linux) | ✅ Tested |
+| macOS | ⚠️ Not yet verified — may work, not actively tested |
 
 ## Windows Users (WSL2)
 
@@ -37,8 +48,8 @@ Agent OS is a Linux-native CLI harness. Windows users **must install WSL2**.
 
 3. **Clone Agent OS inside the Linux filesystem** (do NOT clone under `/mnt/c/` — cross-filesystem I/O hurts SQLite performance):
    ```bash
-   git clone https://github.com/floridaKG/AgentOS-by-RegimeLab.git ~/AgentOS-by-RegimeLab
-   cd ~/AgentOS-by-RegimeLab
+   git clone https://github.com/floridaKG/AgentOS-by-RegimeLab.git ~/agent-os
+   cd ~/agent-os
    ./install.sh
    ```
 
@@ -50,7 +61,7 @@ Agent OS is a Linux-native CLI harness. Windows users **must install WSL2**.
 
 ```bash
 git clone https://github.com/floridaKG/AgentOS-by-RegimeLab.git
-cd AgentOS-by-RegimeLab
+cd agent-os
 ./install.sh
 ```
 
@@ -59,17 +70,22 @@ extracted directory.
 
 ## What the Installer Does
 
-1. Checks prerequisites (Python, Git, Node.js)
+1. Checks prerequisites (Python 3.10+, Git, Bash)
 2. Verifies repo structure
 3. Creates `~/.config/agent-os/config.env` and `secrets.env`
 4. Installs Python dependencies from `requirements.txt`
 5. Verifies all CLI entry points (`bin/`) and health scripts (`scripts/`)
 6. Initializes the memory directory (SQLite database, schema)
-7. **Installs multi-agent configuration** under `~/.config/agent-workflows/` — roles, model aliases, panels, safety rules, ACP dispatch scripts, and swarm/council/dialogue orchestration workflows
+7. **Installs multi-agent workflow configuration** under `~/.config/agent-workflows/` — roles, model aliases, panels, safety rules, ACP dispatch scripts, and swarm/council/dialogue orchestration workflows
 8. **Auto-adds `$AGENT_OS_HOME/bin` to PATH** in your shell profile (`~/.bashrc`, `~/.zshrc`, or `~/.profile`)
 
+**What the installer does NOT install by default:**
+- RTK (Rust Token Killer) — opt in with `./install.sh --with-rtk`
+- ACPx (universal agent launcher) — external npm package, install separately
+- CodeGraph (structural code queries) — external npm package, install separately
+
 The installer is **idempotent** — running it again is safe and will not
-overwrite existing configuration.
+overwrite existing configuration files.
 
 ### Non-Interactive Test Mode
 
@@ -166,6 +182,28 @@ Run the verification script:
 bash $AGENT_OS_HOME/scripts/agent-os-verify.sh
 ```
 
+## What's Available After Install
+
+After a default install, these subsystems are ready to use:
+
+| Subsystem | Command | Description |
+|---|---|---|
+| Health check | `bash $AGENT_OS_HOME/scripts/agent-os-health.sh` | Verify all systems operational |
+| Memory (write) | `memory-st write ...` | Record lessons, stumbles, decisions |
+| Memory (recall) | `memory-recall --text "query"` | Search memory by text |
+| Memory (inject) | `memory-inject --packet file.json` | Inject from packet file |
+| Agent Voice | `agent-voice emit ...` | Report friction and improvements |
+| Multi-agent | `team fire ...` | Dispatch multi-agent panels |
+| Unified CLI | `python3 $AGENT_OS_HOME/scripts/agent-os` | All-in-one CLI dispatcher |
+
+Not included by default (install separately if needed):
+
+| Tool | Install command | Purpose |
+|---|---|---|
+| RTK | `./install.sh --with-rtk` | Token savings CLI proxy |
+| ACPx | `npm install -g acpx` | Universal agent launcher |
+| CodeGraph | `npm install -g @codegraph/cli` | Structural code queries |
+
 ### Try the Unified CLI
 
 Agent OS ships with a unified CLI that dispatches to 18 subsystems:
@@ -174,6 +212,38 @@ Agent OS ships with a unified CLI that dispatches to 18 subsystems:
 python3 $AGENT_OS_HOME/scripts/agent-os --help
 python3 $AGENT_OS_HOME/scripts/agent-os doctor
 python3 $AGENT_OS_HOME/scripts/agent-os health
+```
+
+## First-Run Checklist
+
+After running `./install.sh`, follow this sequence to verify everything works:
+
+```bash
+# 1. Source the config (or open a new terminal)
+source ~/.config/agent-os/config.env
+
+# 2. Add your LLM API key
+#    Edit ~/.config/agent-os/config.env and set LLM_API_KEY
+
+# 3. Verify installation health
+bash $AGENT_OS_HOME/scripts/agent-os-health.sh
+
+# 4. Register a workspace (optional — create one for your project)
+mkdir -p ~/my-agent-os-workspace
+#    Add to ~/.config/agent-os/config.env:
+#    export AGENT_OS_WORKSPACE="$HOME/my-agent-os-workspace"
+
+# 5. Write your first memory lesson
+memory-st write --run-id first-run --agent-id test --workspace home \
+  --intent LESSON --kind observation \
+  --summary "First run verified" --content-file /dev/stdin \
+  --source-ref cli:first-run <<< "Installation complete, memory system working."
+
+# 6. Recall your lesson
+memory-recall --text "first run"
+
+# 7. Check what's available
+bash $AGENT_OS_HOME/scripts/agent-os-health.sh --verbose
 ```
 
 ## Getting Started
@@ -262,24 +332,18 @@ Protocol). Configure your preferred agent in the registry.
 
 See `registry/agents.yaml` for supported agent types and configuration.
 
-### Installing ACPx (Universal Agent Launcher)
+### ACPx (Universal Agent Launcher) — Optional, External
 
-ACPx launches and manages AI coding agents through a unified interface.
-It is MIT-licensed and installed separately:
+ACPx is an external MIT-licensed tool that launches and manages AI coding
+agents through a unified interface. It is **not part of the Agent OS default
+install** and must be installed separately if you need it:
 
 ```bash
 npm install -g acpx
 ```
 
-Verify:
-
-```bash
-acpx --version
-```
-
-ACPx provides: cooperative cancellation, named parallel sessions, crash
-reconnect, and cross-model DAG orchestration. See `docs/ARCHITECTURE.md`
-for details.
+Requires Node.js 18+ and npm. ACPx provides cooperative cancellation, named
+parallel sessions, crash reconnect, and cross-model DAG orchestration.
 
 ### Configuring MOE and Multi-Agent Panels
 
@@ -306,23 +370,18 @@ read-only review swarms, persistent collaboration, red-team review, and
 sequential pipelines. Provider credentials remain in each provider's normal
 CLI/configuration; Agent OS does not copy or store them.
 
-### Installing CodeGraph (Code Structure Queries)
+### CodeGraph (Code Structure Queries) — Optional, External
 
-CodeGraph answers structural code questions (who calls X, what does X call,
-what breaks if I change X) in a single query instead of chaining grep/read.
+CodeGraph is an external tool that answers structural code questions (who
+calls X, what does X call, what breaks if I change X) in a single query.
+It is **not part of the Agent OS default install** and must be installed
+separately if you need it:
 
 ```bash
 npm install -g @codegraph/cli
-```
-
-Then index your project:
-
-```bash
 cd /path/to/your/project
 codegraph index
 ```
-
-See `docs/codegraph-setup.md` for the full reference.
 
 ### Setting Up the Self-Learning Loop
 
@@ -376,7 +435,7 @@ are stored in the `st_decisions` table. Reports land in
 ## Upgrade
 
 ```bash
-cd AgentOS-by-RegimeLab
+cd agent-os
 git pull
 ./install.sh
 ```

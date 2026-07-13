@@ -48,7 +48,7 @@ WORKFLOWS_DIR = Path(
 PANELS_TOML = WORKFLOWS_DIR / "panels.toml"
 TOPOLOGIES_TOML = WORKFLOWS_DIR / "topologies.toml"
 RUNS_DIR = Path.home() / ".local" / "state" / "agent-os" / "moe" / "runs"
-VALID_PROVIDERS = {"opencode", "codex", "claude", "droid", "pi"}
+VALID_PROVIDERS = {"opencode", "codex", "claude", "pi"}
 MODEL_ALIASES_TOML = WORKFLOWS_DIR / "model_aliases.toml"
 
 
@@ -120,7 +120,7 @@ def parse_model_id(raw: str) -> ModelCall:
     Parse a `<provider>/<model>` string into a ModelCall.
 
     The umbrella defines the canonical schema as provider in
-    {opencode, codex, claude, droid, pi}. For MOE 1 we only need
+    {opencode, codex, claude, pi}. For MOE 1 we only need
     opencode + opencode-go + openrouter; the rest are explicit 'unsupported
     in MOE 1' errors so the panel config can't silently route to a tier we
     haven't built.
@@ -3107,7 +3107,7 @@ def _panels_check(panel_name: str, as_json: bool = False) -> int:
                     # _validate (run_member_cli): a 'pong' reply is intentionally tiny
                     # and fails MIN_OUTPUT_BYTES (false-negative for real members),
                     # while a large error payload passes the size check (false-positive
-                    # — the droid 402 seen in review m1). Judge by has_pong.
+                    # — error responses from providers). Judge by has_pong.
                     has_pong = "pong" in meta.get("content", "").strip().lower()[:20]
                     result["ping_seen"] = has_pong
                     result["ok"] = has_pong
@@ -3205,7 +3205,7 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Panel name from panels.toml. Default: quick.")
     p_fire.add_argument("--members", type=str, default=None,
                         help="Comma-separated inline member specs (e.g. 'claude opus high, "
-                             "codex gpt-5.5 med, droid kimi-k2.7 low'). "
+                             "codex gpt-5.5 med, opencode deepseek-v4-flash low'). "
                              "Honors --tier: builds a transient panel for tier 2 (default), "
                              "2r, or 3 (collaborate/redteam). Overrides --panel.")
     p_fire.add_argument("--mode", type=str, default="collaborate",

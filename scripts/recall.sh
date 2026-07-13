@@ -16,8 +16,10 @@ COCKPIT="${COCKPIT:-$AGENT_OS_HOME}"
 COCKPIT_LESSONS="${COCKPIT_LESSONS:-$AGENT_OS_HOME/lessons.md}"
 COCKPIT_MEMORY="${COCKPIT_MEMORY:-$AGENT_OS_HOME/memory.md}"
 USER_MEM="${USER_MEM:-$AGENT_OS_HOME/state/memory/memory.md}"
-PROJECT_A="${PROJECT_A:-$AGENT_OS_HOME/workspace-project-a}"
-PROJECT_B="${PROJECT_B:-$AGENT_OS_HOME/workspace-project-b}"
+# Workspace paths are user-defined. Set these env vars to point at your own
+# workspace memory files. If unset, they are skipped silently.
+PROJECT_A="${PROJECT_A:-}"
+PROJECT_B="${PROJECT_B:-}"
 VAULT="${VAULT:-${VAULT_PATH:-$AGENT_OS_HOME/vault}}"
 
 log_usage() {
@@ -266,10 +268,15 @@ case "$TIER" in
     add_root "cockpit"   "$COCKPIT_LESSONS"
     add_root "cockpit"   "$COCKPIT_MEMORY"
     add_root "user"      "$USER_MEM"
-    add_root "project-b"  "$PROJECT_B/docs/MEMORY.md"
-    add_root "project-b"  "$PROJECT_B/docs/LESSONS.md"
-    add_root "project-a"  "$PROJECT_A/docs/MEMORY.md"
-    add_root "project-a"  "$PROJECT_A/docs/LESSONS.md"
+    # User-defined workspace memory paths (set PROJECT_A / PROJECT_B env vars)
+    if [[ -n "$PROJECT_A" ]]; then
+      add_root "project-a"  "$PROJECT_A/docs/MEMORY.md"
+      add_root "project-a"  "$PROJECT_A/docs/LESSONS.md"
+    fi
+    if [[ -n "$PROJECT_B" ]]; then
+      add_root "project-b"  "$PROJECT_B/docs/MEMORY.md"
+      add_root "project-b"  "$PROJECT_B/docs/LESSONS.md"
+    fi
     add_root "vault"     "$VAULT/self/memory.md"
     add_root "vault"     "$VAULT/docs/vault-os/LESSONS.md"
     add_root "vault"     "$VAULT/findings"

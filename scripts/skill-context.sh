@@ -2,7 +2,7 @@
 # skill-context — rank a task text against the skills registry and, when the
 # top hit is strong, emit its packed actionable section for prompt injection.
 #
-# Used by deterministic dispatch paths (droid-exec, agent-workflow lib/run.sh,
+# Used by deterministic dispatch paths (agent-workflow lib/run.sh,
 # sidecar) so skill adoption doesn't depend on agents remembering the
 # AGENTS.md skill-selection convention.
 #

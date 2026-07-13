@@ -1,6 +1,13 @@
 # Public Agent OS agents registry.
-# Supported agent integrations for ACP dispatch.
-# Last rebuilt: 2026-06-25
+# Supported agent integrations for ACP dispatch and multi-agent workflows.
+# Last rebuilt: 2026-07-13
+#
+# Status legend:
+#   tested     — Known to work with the current release; validated in CI.
+#   experimental — Works but not yet covered by automated tests.
+#
+# Every agent requires user configuration before it can dispatch tasks.
+# See SETUP.md for per-agent setup instructions.
 
 agents:
   - id: claude
@@ -8,24 +15,30 @@ agents:
     invocation_template: claude -p "{{prompt}}" --model {{model}}
     role_strengths: [reasoning, review, orchestration]
     use_when: "Complex reasoning, code review, team coordination"
+    status: tested
+    configuration:
+      requires: "claude CLI installed and authenticated (`claude --version`)"
+      setup_doc: "https://docs.anthropic.com/en/docs/claude-code"
+      models: "User-configured via `--model` flag"
 
   - id: codex
     description: OpenAI Codex — deep code analysis, complex refactoring
     invocation_template: codex exec -m {{model}} --json -o {{out}} "{{prompt}}"
     role_strengths: [code archaeology, refactoring, analysis]
     use_when: "Deep code analysis, complex refactoring"
+    status: tested
+    configuration:
+      requires: "codex CLI installed and authenticated (`codex --version`)"
+      setup_doc: "https://github.com/openai/codex"
+      models: "User-configured via `-m` flag"
 
   - id: opencode
     description: OpenCode — lightweight agent host with multiple model support
     invocation_template: opencode run --model {{model}} --title {{title}} "{{prompt}}"
     role_strengths: [parallel exploration, fast review]
     use_when: "Cheap/free model hosting, parallel exploration"
-
-  - id: cline
-    description: Cline AI coding agent — live catalog, streaming, free model default
-    invocation_template: acpx --model {{model}} cline exec "{{prompt}}"
-    role_strengths: [cheap execution, parallel dispatch, tool-using tasks]
-    provider: cline
-    cost: free default / included model when explicitly selected
-    transport: acpx → JSON-RPC relay → Cline --acp mode
-    use_when: "Cheap/free model execution, streaming output, parallel tasks"
+    status: tested
+    configuration:
+      requires: "opencode CLI installed (`opencode --version`)"
+      setup_doc: "https://github.com/opencode-ai/opencode"
+      models: "User-configured via `--model` flag; free models available"

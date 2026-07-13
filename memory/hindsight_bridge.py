@@ -2,6 +2,23 @@
 """
 hindsight_bridge.py — Hindsight -> Agent OS short-term memory digest bridge.
 
+DEFERRED FROM V1 OSS: This module requires the Hermes + Hindsight API stack,
+which is not part of the open-source Agent OS distribution. It is provided
+here for reference and will be activated in a future release when the
+Hindsight adapter is open-sourced.
+
+DO NOT use this bridge in production OSS deployments. It depends on:
+  - hindsight_client Python package (not in requirements.txt)
+  - Hindsight API running locally (http://127.0.0.1:9177)
+  - Hermes runtime (not bundled)
+
+For local-core memory, use `memory-st` and `recall` which work with SQLite
+only and require no external services.
+
+Original docstring follows:
+---
+hindsight_bridge.py — Hindsight -> Agent OS short-term memory digest bridge.
+
 Exports filtered Hindsight memories into Agent OS short-term memory with
 explicit provenance. This is the only supported seam from a Hindsight memory
 bank into the shared Agent OS memory plane.

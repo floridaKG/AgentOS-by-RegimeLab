@@ -1,11 +1,17 @@
 ---
 title: rtk Usage Guide
-last_updated: 2026-06-09
+last_updated: 2026-07-13
 status: active
 source_of_truth: $AGENT_OS_HOME/docs/rtk-usage-guide.md
 ---
 
 # rtk — Token-Efficient CLI Proxy
+
+**IMPORTANT: RTK is NOT bundled with Agent OS.** It is a separate external
+project ([github.com/rtk-ai/rtk](https://github.com/rtk-ai/rtk)) that you
+must install independently. Agent OS falls back to standard commands (grep,
+cat, ls) automatically when `rtk` is not on PATH. No Agent OS functionality
+requires RTK — it is purely an optimization.
 
 **rtk** is a high-performance CLI proxy that filters and summarizes system outputs before they reach your LLM context. Use it instead of standard commands to save tokens.
 
