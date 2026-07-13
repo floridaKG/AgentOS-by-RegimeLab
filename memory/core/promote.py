@@ -20,23 +20,81 @@ Rejection rules (DUAL_MEMORY_SPEC.md):
 """
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
 import re
 import sqlite3
+import stat
 import subprocess
 import sys
+import tempfile
 import time
+from pathlib import Path
 
 import ledger  # same-directory: $AGENT_OS_HOME/memory/ledger.py
+
+# ── AGENT_OS_HOME resolution ──────────────────────────────────────────────
+_AOH = os.environ.get("AGENT_OS_HOME") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 # Subcommand routing: known subcommands that supersede the legacy flat CLI.
 SUBCOMMANDS = {"propose", "approve", "reject", "apply", "rollback", "sweep-stale"}
 
-# ── AGENT_OS_HOME resolution ──────────────────────────────────────────────
-_AOH = os.environ.get("AGENT_OS_HOME") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# ── Security helpers ───────────────────────────────────────────────────────
+
+# Allowed source roots for promotion
+ALLOWED_SOURCE_ROOTS = [
+    os.path.join(_AOH, "docs"),
+    os.path.join(_AOH, "skills"),
+    os.path.join(_AOH, "memory"),
+]
+
+
+def _confined_source_path(source_path):
+    """Confine a source path to allowed roots.
+
+    Returns the path if it's under an allowed root, None otherwise.
+    This prevents promotion of files outside the agent-os directory structure.
+    """
+    source_path = os.path.abspath(source_path)
+
+    for root in ALLOWED_SOURCE_ROOTS:
+        root = os.path.abspath(root)
+        try:
+            # Check if source_path is under root
+            Path(source_path).resolve().relative_to(Path(root).resolve())
+            return source_path
+        except ValueError:
+            continue
+
+    return None
+
+
+@contextlib.contextmanager
+def _secure_record_file(record, prefix=""):
+    """Context manager that creates a secure temporary file with 0o600 permissions.
+
+    The file is automatically removed when the context exits.
+    Yields the path to the temporary file.
+    """
+    fd, path = tempfile.mkstemp(prefix=prefix, suffix=".json")
+    try:
+        # Set secure permissions
+        os.chmod(path, 0o600)
+
+        # Write the record
+        with os.fdopen(fd, 'w') as f:
+            json.dump(record, f, indent=2, default=str)
+
+        yield path
+    finally:
+        # Clean up
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
 
 # ── Constants ──────────────────────────────────────────────────────────────
 
@@ -53,6 +111,20 @@ DENIED_PATTERNS = [
     r"\.pem",
     r"credential.*\.json",
     r"credentials\.json",
+    # API key patterns
+    r"api[_-]?key\s*[=:]\s*\S+",
+    r"apikey\s*[=:]\s*\S+",
+    # AWS access key patterns
+    r"AKIA[0-9A-Z]{16}",
+    # Private key headers
+    r"-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----",
+    # Session/auth token patterns
+    r"SESSION[_-]?TOKEN\s*[=:]\s*\S+",
+    r"AUTH[_-]?TOKEN\s*[=:]\s*\S+",
+    r"ANTHROPIC[_-]?AUTH[_-]?TOKEN\s*[=:]\s*\S+",
+    # Generic secret patterns
+    r"SECRET[_-]?KEY\s*[=:]\s*\S+",
+    r"ACCESS[_-]?TOKEN\s*[=:]\s*\S+",
 ]
 
 # Hedging/uncertainty patterns for unverified guess detection

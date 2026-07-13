@@ -56,9 +56,45 @@ if echo "$CMD" | grep -qE '^rm -rf '; then
   exit 0
 fi
 
+# DANGER / review — shell execution patterns (bash -c, curl|bash, eval, etc.)
+if echo "$CMD" | grep -qE '(bash\s+-c|sh\s+-c|curl\s+.*\|\s*bash|wget\s+.*\|\s*sh|eval\s+)'; then
+  echo '{"tier":"danger","recommendation":"review","reason":"shell execution pattern detected, requires human review"}'
+  exit 0
+fi
+
+# DANGER / review — path traversal attempts (../, ~/)
+if echo "$CMD" | grep -qE '(\.\./|~/|\$HOME/|\$\{HOME\}/|\$USERPROFILE/)'; then
+  echo '{"tier":"danger","recommendation":"review","reason":"path traversal detected, requires human review"}'
+  exit 0
+fi
+
+# DANGER / review — writing outside workspace (--output, >)
+if echo "$CMD" | grep -qE '(--output=|>\s*[^|])'; then
+  echo '{"tier":"danger","recommendation":"review","reason":"file write detected, requires human review"}'
+  exit 0
+fi
+
+# DANGER / review — accessing parent directories (../../)
+if echo "$CMD" | grep -qE '\.\./\.\./'; then
+  echo '{"tier":"danger","recommendation":"review","reason":"parent directory access detected, requires human review"}'
+  exit 0
+fi
+
+# DANGER / review — accessing home directories
+if echo "$CMD" | grep -qE '(/home/[^/]+|/root/|/Users/)'; then
+  echo '{"tier":"danger","recommendation":"review","reason":"home directory access detected, requires human review"}'
+  exit 0
+fi
+
 # DANGER / review — destructive git operations
 if echo "$CMD" | grep -qE '^git (reset --hard|checkout -- \.|push --force|push -f|clean -fd|stash drop|add \.|add -A|commit|stash|clone|worktree)'; then
   echo '{"tier":"danger","recommendation":"review","reason":"destructive git operation, requires human review"}'
+  exit 0
+fi
+
+# DANGER / review — git operations with dangerous flags
+if echo "$CMD" | grep -qE '^git\s+.*(-C\s+/tmp|--no-index|--output=|-c\s+diff\.pwn)'; then
+  echo '{"tier":"danger","recommendation":"review","reason":"git operation with dangerous flags, requires human review"}'
   exit 0
 fi
 
@@ -80,18 +116,47 @@ if echo "$CMD" | grep -qE '(cat|head|tail|less|more|vim?|nano|code|open|xdg-open
   exit 0
 fi
 
-# CAUTION / allow — standard development and utility commands
-if echo "$CMD" | grep -qE '^(ls|cd|pwd|cat\b|grep\b|find\b|python3\b|npm\b|pip\b|git (status|diff|log|branch)\b)'; then
-  echo '{"tier":"caution","recommendation":"allow","reason":"standard development or utility command"}'
+# DANGER / review — python/node execution with -c flag (code injection risk)
+if echo "$CMD" | grep -qE '(python3?\s+-c|node\s+-e|ruby\s+-e)'; then
+  echo '{"tier":"danger","recommendation":"review","reason":"code execution via -c/-e flag, requires human review"}'
   exit 0
 fi
 
-# SAFE / allow — benign informational commands
-if echo "$CMD" | grep -qE '^(echo|printf|date|whoami|uname|head\b|tail\b|wc\b|sort\b|mkdir\b|touch\b)'; then
+# DANGER / review — recursive grep (potential for traversing sensitive dirs)
+if echo "$CMD" | grep -qE '^grep\s+.*-[a-zA-Z]*R[a-zA-Z]*\s'; then
+  echo '{"tier":"danger","recommendation":"review","reason":"recursive grep detected, requires human review"}'
+  exit 0
+fi
+
+# DANGER / review — rg (ripgrep) with potentially dangerous flags
+if echo "$CMD" | grep -qE '^rg\s+.*(-uuu|--hidden)'; then
+  echo '{"tier":"danger","recommendation":"review","reason":"rg with dangerous flags, requires human review"}'
+  exit 0
+fi
+
+# DANGER / review — reading sensitive config files
+if echo "$CMD" | grep -qE '(cat|head|tail|less|more)\s+.*config\.(env|json|toml|yaml|yml)'; then
+  echo '{"tier":"danger","recommendation":"review","reason":"reading config file with potential secrets, requires human review"}'
+  exit 0
+fi
+
+# CAUTION / allow — ONLY extremely narrow safe commands (no arguments that could be abused)
+# These are the ONLY commands allowed without review:
+#   - git status --short (read-only, no side effects)
+#   - date (benign info)
+#   - pwd (benign info)
+#   - whoami (benign info)
+#   - ls (list directory)
+if echo "$CMD" | grep -qE '^git status --short$'; then
+  echo '{"tier":"caution","recommendation":"allow","reason":"read-only git status"}'
+  exit 0
+fi
+
+if echo "$CMD" | grep -qE '^(date|pwd|whoami|ls)$'; then
   echo '{"tier":"safe","recommendation":"allow","reason":"benign informational command"}'
   exit 0
 fi
 
-# Catch-all — unrecognized commands default to caution/allow
-echo '{"tier":"caution","recommendation":"allow","reason":"unrecognized command, defaulting to caution"}'
+# Catch-all — unrecognized commands default to review (fail-closed)
+echo '{"tier":"caution","recommendation":"review","reason":"unrecognized command, defaulting to review for safety"}'
 exit 0

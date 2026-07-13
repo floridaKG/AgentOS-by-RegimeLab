@@ -314,6 +314,18 @@ run_member() {
 # Returns: 0 on success, non-zero on failure
 if [ "${1:-}" = "run_member_cli" ]; then
     shift
+
+    # Check for readonly flag (6th arg after shift, since we shifted run_member_cli)
+    readonly_flag="${6:-}"
+    if [ "$readonly_flag" = "readonly" ]; then
+        # Readonly mode is not supported in the public OSS distribution
+        printf '{"ts":"%s","provider":"%s","model":"%s","status":"failed","duration_s":0,"bytes":0,"error_class":"readonly_unenforceable"}\n' \
+            "$(date -u +%FT%TZ)" "${1:-unknown}" "${2:-unknown}" \
+            >> "$RUN_LOG"
+        echo "ERROR: readonly mode is not supported in the public OSS distribution" >&2
+        exit 1
+    fi
+
     run_member "$@"
     rc=$?
     # Output JSON row to stdout

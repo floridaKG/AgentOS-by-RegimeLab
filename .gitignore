@@ -22,3 +22,13 @@ node_modules/
 .venv/
 droid-wiki/
 droid-wiki-new/
+
+# Credentials and secrets
+secrets.env
+service-account*.json
+.npmrc
+.netrc
+*.key
+*.p8
+*.keystore
+kubeconfig

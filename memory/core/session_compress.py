@@ -31,6 +31,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -367,9 +368,20 @@ def _upsert_fact(session_id: str, idx: int, fact: str) -> Dict[str, Any]:
         "promoted_from": session_id,
         "promoted_at": _now_iso(),
     }
-    tmp = f"/tmp/session_upsert_{session_id}_{idx}.json"
-    Path(tmp).write_text(json.dumps(record))
+
+    # Sanitize session_id for use as filename prefix (remove path components)
+    safe_prefix = re.sub(r'[^a-zA-Z0-9_-]', '_', session_id).strip('_')[:50]
+
+    # Create secure temp file with 0o600 permissions
+    fd, tmp = tempfile.mkstemp(prefix=f"session_upsert_{safe_prefix}_{idx}_", suffix=".json")
     try:
+        # Set secure permissions immediately
+        os.chmod(tmp, 0o600)
+
+        # Write the record
+        with os.fdopen(fd, 'w') as f:
+            json.dump(record, f)
+
         proc = subprocess.run(
             [MEMORY_LT, "upsert-vector",
              "--namespace", NAMESPACE,

@@ -6,4 +6,4 @@
 #   pinecone>=9.0.0   # Semantic memory (Pinecone vector search)
 #   neo4j>=5.20.0     # Graph memory (Neo4j knowledge graph)
 
-pyyaml>=6.0
+PyYAML==6.0.2

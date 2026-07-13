@@ -17,13 +17,162 @@ Usage:
 import json
 import logging
 import os
+import re
 import signal
+import stat
 import subprocess
 import sys
 import time
 import glob as glob_mod
 import hashlib
 from pathlib import Path
+
+# ── Security helpers ───────────────────────────────────────────────────────
+
+# Regex patterns for safe identifiers
+WORKSPACE_RE = re.compile(r'^[a-z0-9][a-z0-9_-]*$', re.IGNORECASE)
+RUN_ID_RE = re.compile(r'^task-\d{10}-[a-f0-9]{8}$')
+
+# Allowed envelope fields (no arbitrary field injection)
+ENVELOPE_SCHEMA_FIELDS = {
+    "schema", "run_id", "role", "workspace", "objective", "body",
+    "session", "with_memory", "state", "created_at", "updated_at", "history"
+}
+
+
+def _validate_identifier(value, pattern, field_name):
+    """Validate that an identifier matches the expected pattern.
+
+    Raises ValueError if the identifier is invalid or contains traversal attempts.
+    """
+    if not value or not isinstance(value, str):
+        raise ValueError(f"{field_name} must be a non-empty string")
+
+    # Check for path traversal attempts
+    if '..' in value or '/' in value or '\\' in value:
+        raise ValueError(f"{field_name} contains path traversal: {value}")
+
+    if not pattern.match(value):
+        raise ValueError(f"{field_name} does not match required pattern: {value}")
+
+    return value
+
+
+def _confined_path(base, *parts):
+    """Resolve a path and ensure it stays within the base directory.
+
+    Raises ValueError if the resolved path escapes the base directory
+    or if any part is a symlink that could be used for traversal.
+    """
+    base_path = Path(base).resolve()
+
+    # Build the full path
+    full_path = base_path
+    for part in parts:
+        if not part:
+            continue
+        full_path = full_path / part
+
+    # Resolve the final path
+    resolved = full_path.resolve()
+
+    # Check if resolved path is within base
+    try:
+        resolved.relative_to(base_path)
+    except ValueError:
+        raise ValueError(f"Path escapes base directory: {full_path}")
+
+    # Check if any intermediate component is a symlink
+    check_path = base_path
+    for part in parts:
+        if not part:
+            continue
+        check_path = check_path / part
+        if check_path.exists() and check_path.is_symlink():
+            # Check if symlink target is outside base
+            target = check_path.resolve()
+            try:
+                target.relative_to(base_path)
+            except ValueError:
+                raise ValueError(f"Symlink escapes base directory: {check_path}")
+
+    return str(resolved)
+
+
+def _validate_envelope(env, expected_workspace, filename):
+    """Validate an envelope structure and security constraints.
+
+    Raises ValueError if:
+    - Schema is not agent_os.acp.envelope.v1
+    - Required fields are missing
+    - Unknown fields are present
+    - Run ID contains traversal
+    - Workspace doesn't match expected
+    """
+    if not isinstance(env, dict):
+        raise ValueError("Envelope must be a dictionary")
+
+    # Check schema
+    if env.get("schema") != "agent_os.acp.envelope.v1":
+        raise ValueError(f"Invalid schema: {env.get('schema')}")
+
+    # Check required fields
+    required = {"schema", "run_id", "role", "workspace", "objective", "state"}
+    missing = required - set(env.keys())
+    if missing:
+        raise ValueError(f"Missing required fields: {missing}")
+
+    # Check for unknown fields
+    unknown = set(env.keys()) - ENVELOPE_SCHEMA_FIELDS
+    if unknown:
+        raise ValueError(f"Unknown fields in envelope: {unknown}")
+
+    # Validate run_id (no traversal)
+    run_id = env.get("run_id", "")
+    _validate_identifier(run_id, RUN_ID_RE, "run_id")
+    _validate_identifier(expected_workspace, WORKSPACE_RE, "workspace")
+
+    # Validate workspace matches expected
+    if env.get("workspace") != expected_workspace:
+        raise ValueError(f"Workspace mismatch: {env.get('workspace')} != {expected_workspace}")
+
+    return True
+
+
+def _read_secure_json(path):
+    """Read a JSON file with permission validation.
+
+    Raises PermissionError if the file is not 0o600.
+    Raises ValueError if the file cannot be parsed.
+    """
+    path = Path(path)
+
+    # Check permissions before reading
+    if path.exists():
+        actual_mode = stat.S_IMODE(path.stat().st_mode)
+        if actual_mode != 0o600:
+            raise PermissionError(f"File permissions {oct(actual_mode)} != expected 0o600")
+
+    # Read and parse
+    with open(path, 'r', encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _resolve_role(role):
+    """Resolve a role to (provider, model) tuple.
+
+    Returns (provider, model) or raises KeyError if role not found.
+    """
+    roles = _load_roles()
+    if role not in roles:
+        raise KeyError(f"Role '{role}' not found in roles configuration")
+
+    role_config = roles[role]
+    provider = role_config.get("provider") or role_config.get("default", "opencode")
+    model = role_config.get("model", "default")
+
+    return (provider, model)
+
 
 # ── Configuration ───────────────────────────────────────────────────────
 AGENT_OS_HOME = os.environ.get("AGENT_OS_HOME", "")
@@ -102,7 +251,15 @@ def _load_roles():
 
     with open(ROLES_FILE, "rb") as f:
         data = tomllib.load(f)
-    return data.get("roles", {})
+
+    # Filter to only role sections (exclude 'workspaces' and other non-role sections)
+    # Role sections have 'provider' and 'model' keys
+    roles = {}
+    for key, value in data.items():
+        if isinstance(value, dict) and "provider" in value:
+            roles[key] = value
+
+    return roles
 
 
 def _check_acpx():
@@ -143,29 +300,33 @@ def _transition_run(run_id, new_state, reason=""):
 
 def _read_envelope(run_id):
     """Read envelope.json for a run."""
-    path = os.path.join(RUNS_DIR, run_id, "envelope.json")
+    _validate_identifier(run_id, RUN_ID_RE, "run_id")
+    path = _confined_path(RUNS_DIR, run_id, "envelope.json")
     if not os.path.exists(path):
         return None
-    with open(path, "r") as f:
-        return json.load(f)
+    return _read_secure_json(path)
 
 
 def _write_envelope(run_id, data):
     """Write envelope.json for a run."""
-    run_dir = os.path.join(RUNS_DIR, run_id)
+    _validate_identifier(run_id, RUN_ID_RE, "run_id")
+    run_dir = _confined_path(RUNS_DIR, run_id)
     os.makedirs(run_dir, exist_ok=True)
-    path = os.path.join(run_dir, "envelope.json")
-    with open(path, "w") as f:
+    path = _confined_path(RUNS_DIR, run_id, "envelope.json")
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, default=str)
 
 
 def _move_to_dead_letter(envelope, reason):
     """Move a failed envelope to dead_letters."""
     run_id = envelope.get("run_id", "unknown")
-    dl_path = os.path.join(DEAD_LETTER_DIR, f"{run_id}.json")
+    _validate_identifier(run_id, RUN_ID_RE, "run_id")
+    dl_path = _confined_path(DEAD_LETTER_DIR, f"{run_id}.json")
     envelope["dead_letter_reason"] = reason
     envelope["dead_letter_at"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
-    with open(dl_path, "w") as f:
+    fd = os.open(dl_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
         json.dump(envelope, f, indent=2, default=str)
     log.warning("Moved run %s to dead_letters: %s", run_id, reason)
 
@@ -181,19 +342,29 @@ def _scan_inboxes():
         if not os.path.isdir(ws_dir):
             continue
         workspace = os.path.basename(ws_dir)
+        try:
+            _validate_identifier(workspace, WORKSPACE_RE, "workspace")
+            _confined_path(INBOX_BASE, workspace)
+        except ValueError as exc:
+            log.warning("Skipping invalid workspace inbox %s: %s", ws_dir, exc)
+            continue
         for fpath in sorted(glob_mod.iglob(os.path.join(ws_dir, "*.json"))):
             try:
-                with open(fpath, "r") as f:
-                    env = json.load(f)
+                filename = os.path.basename(fpath)
+                _confined_path(INBOX_BASE, workspace, filename)
+                env = _read_secure_json(fpath)
+                _validate_envelope(env, workspace, filename)
                 if env.get("state") == "queued":
                     envelopes.append((workspace, fpath, env))
-            except (json.JSONDecodeError, OSError) as e:
+            except (json.JSONDecodeError, OSError, PermissionError, ValueError) as e:
                 log.warning("Failed to read inbox %s: %s", fpath, e)
     return envelopes
 
 
 def _dispatch(workspace, inbox_path, envelope):
     """Dispatch an envelope to its target agent."""
+    _validate_identifier(workspace, WORKSPACE_RE, "workspace")
+    _validate_envelope(envelope, workspace, os.path.basename(inbox_path))
     run_id = envelope["run_id"]
     role = envelope["role"]
     objective = envelope["objective"]
@@ -205,8 +376,8 @@ def _dispatch(workspace, inbox_path, envelope):
     agent = role_config.get("default", "opencode")
     model = role_config.get("model", "")
 
-    run_dir = os.path.join(RUNS_DIR, run_id)
-    artifacts_dir = os.path.join(run_dir, "artifacts")
+    run_dir = _confined_path(RUNS_DIR, run_id)
+    artifacts_dir = _confined_path(RUNS_DIR, run_id, "artifacts")
     os.makedirs(artifacts_dir, exist_ok=True)
 
     log.info("ACP_DISPATCH run=%s role=%s agent=%s model=%s ws=%s", run_id, role, agent, model, workspace)
@@ -228,8 +399,9 @@ def _dispatch(workspace, inbox_path, envelope):
         prompt_lines.append(f"(Session: {session})")
 
     prompt_text = "\n".join(prompt_lines)
-    prompt_file = os.path.join(run_dir, "prompt.txt")
-    with open(prompt_file, "w") as f:
+    prompt_file = _confined_path(RUNS_DIR, run_id, "prompt.txt")
+    fd = os.open(prompt_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(prompt_text)
 
     if has_acpx:

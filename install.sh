@@ -13,6 +13,7 @@ CONFIG_FILE="${CONFIG_DIR}/config.env"
 SECRETS_FILE="${CONFIG_DIR}/secrets.env"
 WORKFLOW_CONFIG_DIR="${HOME}/.config/agent-workflows"
 TEST_MODE="${AGENT_OS_TEST:-0}"
+TEST_HOME="${AGENT_OS_TEST_HOME:-}"
 WITH_RTK=0
 
 # Parse flags
@@ -37,6 +38,17 @@ pass() { echo "  PASS: $1"; }
 fail() { echo "  FAIL: $1"; exit 1; }
 info() { echo "  $1"; }
 skip() { echo "  SKIP: $1"; }
+
+# In test mode, require an explicitly isolated HOME
+if [ "$TEST_MODE" = "1" ]; then
+  if [ -z "$TEST_HOME" ]; then
+    fail "Test mode requires AGENT_OS_TEST_HOME to be set to an isolated directory"
+  fi
+  if [ "$TEST_HOME" = "$HOME" ]; then
+    fail "Test mode must not use the user's real HOME"
+  fi
+  HOME="$TEST_HOME"
+fi
 
 echo "=== Agent OS Installer ==="
 echo "Install target: $AGENT_OS_HOME"
@@ -303,7 +315,7 @@ echo "  CLI facades: bin/ ($(ls "$AGENT_OS_HOME/bin/" 2>/dev/null | wc -l) comma
 
 echo ""
 echo "=== Next Steps ==="
-echo "1. Add your LLM API key to $CONFIG_FILE"
+echo "1. Add your LLM API key to $SECRETS_FILE"
 echo "2. Source the config: source $CONFIG_FILE"
 echo "3. (Optional) Add bin/ to PATH: auto-configured in ~/.bashrc (or check shell profile)"
 echo "4. Verify: bash $AGENT_OS_HOME/scripts/agent-os-health.sh"

@@ -24,9 +24,9 @@ risks returning. One batch per invocation, then stop.
 Every other doc must justify its existence against SAST or be removed.
 
 To start a new audit run, create a tracking file at
-`agent-os-docs/DOC_AUDIT.md` with the Status / Next Batch / Audit Log
+`$AGENT_OS_HOME/docs/DOC_AUDIT.md` with the Status / Next Batch / Audit Log
 sections, then execute Template A per batch. Archive run output to
-`agent-os-docs/archive/<YYYY-MM>/DOC_AUDIT_run-N.md` at end-state.
+`$AGENT_OS_HOME/docs/archive/<YYYY-MM>/DOC_AUDIT_run-N.md` at end-state.
 
 ## Pre-Flight: Read Coverage
 
@@ -97,9 +97,9 @@ For each doc, decide one verdict:
 |---|---|---|
 | **KEEP** | SAST references it as canonical, OR it's a workspace/agent contract referenced by SAST. | Add/refresh frontmatter (`last_updated`, `status`). No content change unless drift. |
 | **FOLD** | Content duplicates or extends a SAST section. Useful bits go into SAST. | Extract useful content into SAST (cite section). Replace doc body with a one-line redirect, then archive after a grace period. |
-| **DEMOTE** | Real spec content but not a runtime contract. Shipped or in-flight. | `git mv` to `agent-os-docs/specs/` (in-flight) or `agent-os-docs/archive/<YYYY-MM>/` (shipped or superseded). Add `status:` frontmatter. |
+| **DEMOTE** | Real spec content but not a runtime contract. Shipped or in-flight. | `git mv` to `$AGENT_OS_HOME/docs/specs/` (in-flight) or `$AGENT_OS_HOME/docs/archive/<YYYY-MM>/` (shipped or superseded). Add `status:` frontmatter. |
 | **ARCHIVE** | ZOMBIE or REDUNDANT after salvage. Content extracted or no unique value. | Run Salvage Before Archive protocol first. Then move to archive. Write a one-line pointer stub. |
-| **DELETE** | Stale, contradicted, never used, or pure history with no extractable value. | `git rm`. Note the reason in the audit log row. |
+| **DELETE** | Stale, contradicted, never used, or pure history with no extractable value. | Remove the file. Note the reason in the audit log row. |
 
 If unsure between FOLD and DEMOTE: FOLD if SAST has a section it belongs in,
 DEMOTE if it's standalone narrative.
@@ -129,8 +129,8 @@ One row per doc:
 
 Every batch agent must, as the final step before reporting:
 
-1. `git -C $AGENT_OS_HOME/agent-os-docs add -A` the audited files and any SAST/DOC_AUDIT edits.
-2. `git -C $AGENT_OS_HOME/agent-os-docs commit -m "audit(batch-N): <one-line summary>"`. Do not push.
+1. Stage the audited files and any SAST/DOC_AUDIT edits in the docs repo.
+2. Record a one-line summary of the batch in the audit log.
 3. Then run `$AGENT_OS_HOME/bin/sync-docs` and report.
 
 The docs repo is a SEPARATE git repo at `$AGENT_OS_HOME/docs/`. The home-layer no-git-write rule does NOT apply there.
@@ -209,7 +209,7 @@ OSS users start directly with doc-audit below. The manual audit covers the
 same ground: broken paths, stale tool references, and tier assignments.
 ## Related Workflow: Vault Wikilink-Graph Audit
 
-`doc-audit` handles the `agent-os-docs/` SAST-baseline sprawl audit. A sibling
+`doc-audit` handles the `$AGENT_OS_HOME/docs/` SAST-baseline sprawl audit. A sibling
 task the same skill supports: a deep read-only audit of the Knowledge Vault at
 `$VAULT` — an Obsidian-style flat graph of atomic insights linked by
 `[[wikilinks]]`, not a filesystem docs repo. Trigger phrases: "audit the vault",
@@ -233,7 +233,7 @@ docs repo, NOT the vault). The vault itself is read-only during the audit.
 
 ## Related Workflow: DRAFT Spec Pre-READY Review
 
-`doc-audit` handles batch audits of the docs surface. A sibling task the same skill should support: reviewing a single DRAFT spec in `agent-os-docs/specs/active/` before the owner flips it to `READY_FOR_IMPLEMENTATION`. Trigger phrases: "review this spec", "what do you think of <name>.md", "is this ready".
+`doc-audit` handles batch audits of the docs surface. A sibling task the same skill should support: reviewing a single DRAFT spec in `$AGENT_OS_HOME/docs/specs/active/` before the owner flips it to `READY_FOR_IMPLEMENTATION`. Trigger phrases: "review this spec", "what do you think of <name>.md", "is this ready".
 
 ### When to apply
 
@@ -295,10 +295,10 @@ Patterns observed in Run 1. Read before launching the next agent.
 - **Repointing cross-refs is real work.** When a doc gets DEMOTE'd to archive, every reference must be repointed. Always check HOME_LAYER_INDEX.md and MANIFEST.md after any DEMOTE.
 - **SAST is the comparison baseline, not a thing to expand.** If SAST doesn't already have a section for it, it probably isn't architecture truth — DEMOTE the source doc instead.
 - **Disagreements between checkpoint and next-batch agent should surface, not silently resolve.** Never silently downgrade a HIGH severity finding.
-- **MANIFEST.md is auto-generated.** After any move/delete, regenerate with `python3 agent-os-docs/tools/generate_manifest.py`. Do not hand-edit.
-- **AGENTS.md byte-identity rule.** Any edit must keep `$AGENT_OS_HOME/AGENTS.md` ≡ `agent-os-docs/AGENTS.md` ≡ root mirror. Verify with `cmp -s` on all three before committing.
+- **MANIFEST.md is auto-generated.** After any move/delete, regenerate with `python3 $AGENT_OS_HOME/docs/tools/generate_manifest.py`. Do not hand-edit.
+- **AGENTS.md byte-identity rule.** Any edit must keep `$AGENT_OS_HOME/AGENTS.md` ≡ `$AGENT_OS_HOME/docs/AGENTS.md` ≡ root mirror. Verify with `cmp -s` on all three before committing.
 - **Workspace AGENTS.md beats BOOT_FACTS when they conflict.** Each workspace owns its own entry path. BOOT_FACTS is a quick-reference; if it drifts, fix BOOT_FACTS, not the workspace.
-- **Stale root mirrors survive archival.** `sync-docs` copies canonical → mirror but never cleans up mirrors when the canonical is archived. When verifying a file's existence for audit, check ALL three: canonical (`agent-os-docs/`), mirror (`$AGENT_OS_HOME/`), AND archive (`agent-os-docs/archive/<YYYY-MM>/`). The mirror may exist even though the canonical was archived months ago. This creates deceptive "file exists" results from mirror-only checks. Always declare which path you tested.
+- **Stale root mirrors survive archival.** `sync-docs` copies canonical → mirror but never cleans up mirrors when the canonical is archived. When verifying a file's existence for audit, check ALL three: canonical (`$AGENT_OS_HOME/docs/`), mirror (`$AGENT_OS_HOME/`), AND archive (`$AGENT_OS_HOME/docs/archive/<YYYY-MM>/`). The mirror may exist even though the canonical was archived months ago. This creates deceptive "file exists" results from mirror-only checks. Always declare which path you tested.
 - **sync-docs diff tables in AGENTS.md are only as fresh as the last archive sweep.** AGENTS.md §File Sync Convention lists canonical→mirror pairs for files like GOALS.md. If the canonical was archived but the row was never removed, the table still claims a valid sync path. Cross-check every row in that table against actual file existence during audit — don't trust the table's claim that a file exists at the canonical path.
 - **An archived doc's key claims can still enter agent context via session_search.** When an agent uses session_search to understand past work, it retrieves transcripts that may reference now-archived docs and their claims. Those claims may be stale or incorrect. Always verify key factual claims (counts, statuses, paths) against live state, not against session transcript snippets. Archive the doc, not its influence — session_search resurrects old claims without warning.
 - **An archived doc's key claims can still enter agent context via session_search.** When an agent uses session_search to understand past work, it retrieves transcripts that may reference now-archived docs and their claims. Those claims may be stale or incorrect. Always verify key factual claims (counts, statuses, paths) against live state, not against session transcript snippets. Archive the doc, not its influence — session_search resurrects old claims without warning.
@@ -323,21 +323,21 @@ You are running Batch [N] of the rolling Agent OS doc audit — [BATCH NAME].
 One batch, then stop.
 
 Context (read in this order):
-1. agent-os-docs/SYSTEM_ARCHITECTURE_SOURCE_OF_TRUTH.md (SAST) — the
+1. $AGENT_OS_HOME/docs/SYSTEM_ARCHITECTURE_SOURCE_OF_TRUTH.md (SAST) — the
    comparison baseline. Read sections relevant to this batch's family.
 2. The docs in scope for Batch [N].
-3. agent-os-docs/DOC_GOVERNANCE_MATRIX.md — governance rules and cleanup matrix.
+3. $AGENT_OS_HOME/docs/DOC_GOVERNANCE_MATRIX.md — governance rules and cleanup matrix.
 
 > NOTE: The original DOC_AUDIT.md audit log was archived 2026-05-31.
 > This skill.md IS the living audit tool. If you need prior audit findings,
-> check agent-os-docs/archive/2026-05/doc-governance/DOC_AUDIT.md.
+> check $AGENT_OS_HOME/docs/archive/2026-05/doc-governance/DOC_AUDIT.md.
 
 First action: if the Carryover Tracker shows "Batch [N-1] commits NOT yet
 applied," commit the prior batch's staged changes first under its own
 commit message, then start this batch.
 
 Pre-batch md5sum: for each doc in scope, md5sum it against any same-named
-file in agent-os-docs/specs/active/ and agent-os-docs/specs/completed/.
+file in $AGENT_OS_HOME/docs/specs/active/ and $AGENT_OS_HOME/docs/specs/completed/.
 Byte-identical matches get DELETE on the root copy without ceremony.
 
 Use Explore subagents (read-only) in parallel for research. Split the batch
@@ -346,8 +346,8 @@ classifying each as runtime contract / in-flight spec / shipped spec /
 historical narrative, plus SAST overlap if any, plus unique facts worth
 folding. Cap each subagent at ~400 words.
 
-Apply verdicts per the rubric. Use git mv / git rm only — never plain
-mv/rm. Before any DELETE: grep agent-os-docs/, $AGENT_OS_HOME/,
+Apply verdicts per the rubric. Use mv / rm only — never plain
+mv/rm. Before any DELETE: grep $AGENT_OS_HOME/docs/, $AGENT_OS_HOME/,
 $AGENT_OS_HOME/bin/, $AGENT_OS_HOME/.config/ for the filename. If anything
 references it, FOLD or DEMOTE instead. If a DEMOTE'd doc is referenced
 by HOME_LAYER_INDEX.md or MANIFEST.md, repoint in the same batch.
@@ -374,7 +374,7 @@ You are running the SAST coherence checkpoint. Read-only pass. Do NOT
 rewrite SAST.
 
 Context:
-1. agent-os-docs/SYSTEM_ARCHITECTURE_SOURCE_OF_TRUTH.md (SAST) — end-to-end.
+1. $AGENT_OS_HOME/docs/SYSTEM_ARCHITECTURE_SOURCE_OF_TRUTH.md (SAST) — end-to-end.
    (DOC_AUDIT.md was archived 2026-05-31; carryover info is in this skill's history.)
 
 Task: identify drift introduced by FOLD edits and frontmatter changes
@@ -397,7 +397,7 @@ You are running the end-state pass. This concludes Run [N] of the audit.
 
 Tasks:
 1. Resolve remaining Carryover Tracker items or move them to
-   agent-os-docs/POST_AUDIT_FOLLOWUPS.md.
+   $AGENT_OS_HOME/docs/POST_AUDIT_FOLLOWUPS.md.
 2. Apply actionable SAST Coherence Pass findings.
 3. Refresh $AGENT_OS_HOME/skills/doc-audit/SKILL.md if the rubric
    or pitfalls list has evolved.
@@ -407,7 +407,7 @@ Tasks:
    changes to prevent recurrence. Categorize as automation / consolidation /
    elimination / enforcement.
 6. Archive the run-specific content (findings, RCA, recommendations) to
-   agent-os-docs/archive/<YYYY-MM>/doc-audit-run-N.md.
+   $AGENT_OS_HOME/docs/archive/<YYYY-MM>/doc-audit-run-N.md.
    (DOC_AUDIT.md was already archived 2026-05-31 as a thin pointer doc.)
 7. Verify $AGENT_OS_HOME/bin/docs-staleness-check still passes against the
    post-audit doc surface.

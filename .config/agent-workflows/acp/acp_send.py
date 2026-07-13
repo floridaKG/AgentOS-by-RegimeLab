@@ -13,10 +13,13 @@ Usage:
 import argparse
 import json
 import os
+import re
+import stat
 import sys
 import time
 import hashlib
 import shutil
+from pathlib import Path
 
 AGENT_OS_HOME = os.environ.get("AGENT_OS_HOME", os.path.join(os.path.expanduser("~"), "agent-os"))
 ACP_ROOT = os.path.join(AGENT_OS_HOME, ".local", "state", "agent-os", "acp")
@@ -32,6 +35,94 @@ VALID_TRANSITIONS = {
     "review": {"running", "succeeded", "failed", "cancelled"},
     "resume": {"running", "succeeded", "failed", "cancelled"},
 }
+
+# ── Security helpers ───────────────────────────────────────────────────────
+
+# Regex patterns for safe identifiers (no traversal, no special chars)
+WORKSPACE_RE = re.compile(r'^[a-z0-9][a-z0-9_-]*$', re.IGNORECASE)
+RUN_ID_RE = re.compile(r'^task-\d{10}-[a-f0-9]{8}$')
+
+
+def _validate_identifier(value, pattern, field_name):
+    """Validate that an identifier matches the expected pattern.
+
+    Raises ValueError if the identifier is invalid or contains traversal attempts.
+    """
+    if not value or not isinstance(value, str):
+        raise ValueError(f"{field_name} must be a non-empty string")
+
+    # Check for path traversal attempts
+    if '..' in value or '/' in value or '\\' in value:
+        raise ValueError(f"{field_name} contains path traversal: {value}")
+
+    if not pattern.match(value):
+        raise ValueError(f"{field_name} does not match required pattern: {value}")
+
+    return value
+
+
+def _confined_path(base, *parts):
+    """Resolve a path and ensure it stays within the base directory.
+
+    Raises ValueError if:
+    - The resolved path escapes the base directory
+    - Any part is a symlink (symlinks are not allowed for security)
+    - The path contains traversal attempts
+    """
+    base_path = Path(base).resolve()
+
+    # Build the full path
+    full_path = base_path
+    for part in parts:
+        if not part:
+            continue
+        full_path = full_path / part
+
+    # Check if any component is a symlink (reject all symlinks for security)
+    check_path = base_path
+    for part in parts:
+        if not part:
+            continue
+        check_path = check_path / part
+        if check_path.is_symlink():
+            raise ValueError(f"Symlink not allowed: {check_path}")
+
+    # Resolve the final path
+    resolved = full_path.resolve()
+
+    # Check if resolved path is within base
+    try:
+        resolved.relative_to(base_path)
+    except ValueError:
+        raise ValueError(f"Path escapes base directory: {full_path}")
+
+    return str(resolved)
+
+
+def _secure_json_write(path, data):
+    """Write JSON data with secure permissions (0o600).
+
+    Creates parent directories if needed. Fails if the file already exists
+    with incorrect permissions.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Write with secure permissions
+    fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    try:
+        with os.fdopen(fd, 'w') as f:
+            fd = None
+            json.dump(data, f, indent=2, default=str)
+    except Exception:
+        if fd is not None:
+            os.close(fd)
+        raise
+
+    # Verify permissions
+    actual_mode = stat.S_IMODE(path.stat().st_mode)
+    if actual_mode != 0o600:
+        raise PermissionError(f"File permissions {oct(actual_mode)} != expected 0o600")
 
 
 def _ensure_dir(path):
@@ -49,20 +140,21 @@ def _generate_run_id(objective):
 
 
 def _read_envelope(run_id):
-    path = os.path.join(RUNS_DIR, run_id, "envelope.json")
+    _validate_identifier(run_id, RUN_ID_RE, "run_id")
+    path = _confined_path(RUNS_DIR, run_id, "envelope.json")
     if not os.path.exists(path):
         print(f"Error: run {run_id} not found at {path}", file=sys.stderr)
         sys.exit(1)
-    with open(path, "r") as f:
+    with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def _write_envelope(run_id, data):
-    run_dir = os.path.join(RUNS_DIR, run_id)
+    _validate_identifier(run_id, RUN_ID_RE, "run_id")
+    run_dir = _confined_path(RUNS_DIR, run_id)
     _ensure_dir(run_dir)
-    path = os.path.join(run_dir, "envelope.json")
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2, default=str)
+    path = _confined_path(RUNS_DIR, run_id, "envelope.json")
+    _secure_json_write(path, data)
 
 
 def cmd_send(args):
@@ -72,6 +164,11 @@ def cmd_send(args):
 
     if role not in VALID_ROLES:
         print(f"Error: invalid role '{role}'. Valid roles: {', '.join(sorted(VALID_ROLES))}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        _validate_identifier(workspace, WORKSPACE_RE, "workspace")
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
     run_id = _generate_run_id(args.objective)
@@ -94,11 +191,10 @@ def cmd_send(args):
     }
 
     # Write to inbox
-    inbox_dir = os.path.join(INBOX_BASE, workspace)
+    inbox_dir = _confined_path(INBOX_BASE, workspace)
     _ensure_dir(inbox_dir)
-    inbox_path = os.path.join(inbox_dir, f"{run_id}.json")
-    with open(inbox_path, "w") as f:
-        json.dump(envelope, f, indent=2, default=str)
+    inbox_path = _confined_path(INBOX_BASE, workspace, f"{run_id}.json")
+    _secure_json_write(inbox_path, envelope)
 
     # Write to runs directory
     _write_envelope(run_id, envelope)
