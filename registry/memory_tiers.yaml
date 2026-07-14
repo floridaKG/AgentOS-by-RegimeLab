@@ -10,7 +10,7 @@ tiers:
     backend: SQLite + FTS5
     path: $AGENT_OS_HOME/.local/state/agent-os/memory/short_term.sqlite
     scope: operational events, packet outcomes, ephemeral observations
-    write_via: "memory-st write --intent LESSON --summary '...' --source-ref cli:..."
+    write_via: "memory-st write --run-id <run-id> --agent-id <agent-id> --workspace <workspace> --intent LESSON --kind observation --summary '...' --content-file <content-file> --source-ref cli:..."
     read_via: "memory-st query --text '...' --limit N"
     status: core
     notes: FTS5 full-text index. Created on first write. No external dependencies.
@@ -21,7 +21,7 @@ tiers:
     backend: Pinecone
     path: "Pinecone agent-vault index (external service)"
     scope: semantic vector search across lessons, stumbles, decisions
-    write_via: "memory-promote --id <record-id> --target vector"
+    write_via: "memory-promote --target vector --source-path <source-path> --namespace agent-os-docs --scope home --promoted-by <run-id>"
     read_via: "memory-lt search-vector --text '...'"
     status: optional
     notes: "Requires PINECONE_API_KEY and PINECONE_INDEX env vars. See memory/adapters/pinecone/ADAPTER.md"
@@ -32,7 +32,7 @@ tiers:
     backend: Neo4j
     path: "Neo4j AuraDB graph (external service)"
     scope: relationship-based memory queries, source lineage
-    write_via: "memory-promote --id <record-id> --target graph"
-    read_via: "memory-lt query-graph --label <label>"
+    write_via: "memory-promote --target graph --short-term-id <record-id> --reason '<reason>'"
+    read_via: "memory-lt query-graph --text '...' --limit N"
     status: optional
     notes: "Requires NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD env vars. See memory/adapters/neo4j/ADAPTER.md"

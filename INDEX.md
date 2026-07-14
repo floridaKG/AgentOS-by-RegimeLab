@@ -101,10 +101,11 @@ Source of truth: `registry/memory_tiers.yaml`
 
 | Action | Command |
 |---|---|
-| Write lesson/stumble | `memory-st write --intent LESSON --summary "..." --source-ref cli:...` |
+| Write lesson/stumble | `memory-st write --run-id <run-id> --agent-id <agent-id> --workspace <workspace> --intent LESSON --kind observation --summary "..." --content-file <content-file> --source-ref cli:...` |
 | Search memory | `recall "query"` or `memory-lt search-vector --text "..."` |
 | Check health | `bash scripts/agent-os-health.sh` |
-| Promote record | `memory-promote --id <record-id> --target auto` |
+| Promote record | `memory-promote --target graph --short-term-id <record-id> --reason "..."` |
+| Promotion report | `memory-promote --target report` |
 | Dry-run memory injection | `memory-inject --packet packet.json --dry-run` |
 | Capture agent feedback | `agent-voice emit --kind friction --statement "..."` |
 | MOE quick panel | `team fire --tier 1 --panel quick --task "..."` |

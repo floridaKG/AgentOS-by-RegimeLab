@@ -45,13 +45,14 @@ known_private_email = os.environ.get("PRIVATE_EMAIL", "").encode()
 # patterns they scan for — this is architecturally necessary and documented
 # in PRIVACY_BOUNDARY.md.
 SAFE_PATH_PREFIXES = (
-    b"tests/privacy/",
-    b"tests/smoke/cold_boot.sh",
+    b"tests/",  # test fixtures may embed scanner patterns / historical owner strings
     b"scripts/gate-privacy.sh",
     b"scripts/gate-release.sh",
     b"PRIVACY_BOUNDARY.md",
     b"LICENSE",
+    b"SECURITY.md",
     b"droid-wiki/",
+    b".github/workflows/",  # CI may set OWNER_USERNAME for scans
 )
 
 # Generic/example usernames that appear in documentation and test patterns.

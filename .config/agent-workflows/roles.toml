@@ -38,7 +38,8 @@ provider = "claude"
 cost = "user-configured"
 
 [workspaces]
+# Generic defaults — edit paths to match your machine. Add more workspaces as needed.
 home = { path = "$AGENT_OS_HOME" }
-project-a = { path = "$HOME/projects/project-a" }
-project-b = { path = "$HOME/projects/project-b" }
+work = { path = "$HOME/projects/work" }
+docs = { path = "$HOME/projects/docs" }
 vault = { path = "$VAULT_PATH" }

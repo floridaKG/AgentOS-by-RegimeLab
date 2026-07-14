@@ -3,7 +3,8 @@
 # Install: pip install -r requirements.txt
 #
 # Optional adapters (uncomment if you enable the corresponding service):
-#   pinecone>=9.0.0   # Semantic memory (Pinecone vector search)
-#   neo4j>=5.20.0     # Graph memory (Neo4j knowledge graph)
+#   pinecone>=9.0.0              # Semantic memory (Pinecone vector search)
+#   neo4j>=5.20.0                # Graph memory (Neo4j knowledge graph)
+#   hindsight-client>=0.4.22     # Hindsight bank bridge + GC (see memory/adapters/hindsight/)
 
 PyYAML==6.0.2

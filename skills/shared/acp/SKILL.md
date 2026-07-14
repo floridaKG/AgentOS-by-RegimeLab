@@ -7,11 +7,11 @@ trigger:
   - hand this off to opencode
   - send to codex
   - delegate to
-  - ask project-b to
-  - ask project-a to
+  - ask work to
+  - ask docs to
 scope: cross-workspace
 status: stable
-agents: any (claude, opencode, codex, pi, gemini, qwen — anyone with shell access)
+agents: claude, opencode, codex (the providers registered in `registry/agents.yaml`)
 description: Dispatch a task to another agent in the multi-agent OS via ACP (Agent Communication Protocol). Use when handing off work to opencode, codex, or another role/workspace.
 last_reviewed: 2026-06-15
 ---
@@ -72,12 +72,11 @@ the system's total capability. Verify before claiming.
 
 ## When To Use
 
-- The work is better suited to a different model (opencode for cheap volume,
-  codex for hard reasoning, claude for high-context, or the current `pi`
-  role mapping if that alias is configured the way you want)
+- The work is better suited to a different provider (opencode for cheap
+  volume, codex for code analysis, or claude for high-context reasoning)
 - The work needs a specifically configured ACP role label and you have already
   verified its live `roles.toml` mapping
-- The work belongs in a different workspace (project-a, project-b, home, vault)
+- The work belongs in a different workspace (home, work, docs, vault)
 - You want parallel work happening while you continue here
 - A second pair of eyes on code or a spec (reviewer role)
 
@@ -89,17 +88,15 @@ Do NOT use ACP for trivial lookups or anything you can answer locally faster.
 
 ## Roles (from `$AGENT_OS_HOME/.config/agent-workflows/roles.toml`)
 
-| Role | Default | Use For |
+| Role | Provider | Use For |
 |------|---------|---------|
-| explorer | opencode/deepseek-v4-flash-free | Codebase search, "where is X" |
-| architect | opencode/deepseek-v4-flash-free | Design, spec drafts |
-| executor | opencode/deepseek-v4-flash-free | Implementation, file writes |
-| reviewer | opencode/deepseek-v4-flash-free | Light review pass |
-| code_reviewer | opencode/mimo-v2.5-free | Deep code review |
-| hermes | opencode-go/deepseek-v4-flash | Full Hermes capabilities inside an ACP packet |
-| pi | opencode/mimo-v2.5-free | Native Pi ACP role; session model is managed by Pi, not ACP `--model` |
-| escalation | codex/gpt-5.5[high] | Hard problems lower tiers cannot solve |
-| hard_escalation | claude/opus | Last resort, paid tier |
+| explorer | opencode | Codebase search, "where is X" |
+| architect | claude | Design, spec drafts |
+| executor | codex | Implementation, file writes |
+| reviewer | claude | Light review pass |
+| code_reviewer | codex | Deep code review |
+| escalation | claude | Hard problems |
+| hard_escalation | claude | Last resort |
 
 Fallback chains were removed on 2026-06-03 because the adapter only read the
 first configured model. If a role's model is unavailable, the task fails until
@@ -110,8 +107,8 @@ first configured model. If a role's model is unavailable, the task fails until
 Workspaces are user-configurable. The default set:
 
 - `home` -- Agent OS infrastructure (`$AGENT_OS_HOME`)
-- `project-a` -- Project A (user-configured workspace)
-- `project-b` -- Project B (user-configured workspace)
+- `work` -- Primary coding workspace (user-configured)
+- `docs` -- Documentation / knowledge workspace (user-configured)
 - `vault` -- Vault knowledge vault
 
 ## Modes
@@ -125,10 +122,10 @@ session, runs the prompt, returns output, tears down. No state persistence
 between dispatches. Best for self-contained queries.
 
 ```bash
-acp-task executor project-b "Find the API endpoint entry point" --wait
+acp-task executor work "Find the API endpoint entry point" --wait
 ```
 
-### Mode 2: Persistent named session — `acp-task --session <name>`
+### Mode 2: Persistent named session — `acp-task <role> <workspace> "<objective>" --session <name>`
 
 Calls `acpx <agent> prompt -s <session_name>`. Creates a named session whose
 state (message history) persists at `~/.acpx/sessions/` across dispatches.
@@ -188,14 +185,14 @@ Same as WSL invocation. The CLI is on PATH.
 
 ## Examples
 
-### Pipeline task to the current `pi` ACP role label
+### Pipeline task to the executor role
 
 ```bash
-acp-task pi scratch "Audit the codebase for security issues" --wait
+acp-task executor home "Audit the codebase for security issues" --wait
 ```
 
-This dispatches to whatever `roles.toml` currently maps the `pi` role to.
-It now maps to the native Pi adapter.
+This dispatches through the provider configured for `executor` in
+`roles.toml`.
 
 ### Fire and forget
 
@@ -208,7 +205,7 @@ Returns `RUN_ID=task-...` immediately. Check status later.
 ### Block and stream the answer
 
 ```bash
-acp-task explorer project-b "Find the API endpoint entry point" --wait
+acp-task explorer work "Find the API endpoint entry point" --wait
 ```
 
 Blocks up to 6 minutes, prints the agent's output when complete.
@@ -222,7 +219,7 @@ acp-task escalation home "Diagnose why neo4j auto-seed is not wired" --wait
 ### Code review with detail
 
 ```bash
-acp-task code_reviewer project-a "Review the latest API endpoint" \
+acp-task code_reviewer docs "Review the latest API endpoint" \
   --body "Focus on auth flow and SQL injection vectors in the user controller"
 ```
 
@@ -268,7 +265,9 @@ Verify all four ACP providers are working:
 acp-provider-smoke [--timeout 150]
 ```
 
-Dispatches a smoke prompt to opencode, codex, claude, and pi, runs each through the output validator, and reports pass/fail. JSON dump saved to `~/.local/state/agent-os/acp/smoke/<date>.json`.
+Dispatches a smoke prompt to opencode, codex, and claude, runs each through
+the output validator, and reports pass/fail. JSON dump saved to
+`~/.local/state/agent-os/acp/smoke/<date>.json`.
 
 Do not hard-code a fixed “4/4 pass” claim into future docs. The saved smoke
 JSONs are the truth surface, and different runs already show different results.
@@ -341,7 +340,7 @@ context is empty but the task still runs.
 
 - Roles and workspaces are case-sensitive lowercase
 - Objective is one line; use `--body` for detail
-- Workspace must be one of: home, project-a, project-b, vault (or user-configured names)
+- Workspace must be one of: home, work, docs, vault (or user-configured names)
 - Do not use this skill for trivial things — daemon cycles are not free
 
 ## Where Things Live
@@ -361,10 +360,9 @@ context is empty but the task still runs.
 
 ## Pitfalls
 
-- **Model selection differs by provider.** `codex`, `claude`, and `opencode` are
-  acp-flag providers, so their `roles.toml` model ids must match the live
-  advertised catalog. `opencode` is config-only, the current `pi` ACP role may
-  also be routed through opencode config.
+- **Model selection differs by provider.** `codex`, `claude`, and `opencode`
+  are configured in `roles.toml`; their model values must match the live
+  catalogs exposed by the installed CLIs.
 
 - **events.jsonl uses event field, not state.** When polling ACP runs programmatically, look for event: dispatch_completed
 
@@ -384,9 +382,14 @@ context is empty but the task still runs.
   one-shot is correct.
 - **There are no fallback chains anymore.** If the configured model is
   unavailable, the task fails until `roles.toml` is changed.
-- **opencode is slow through ACP.** Expect ~130s response time on the free tier for opencode dispatches. If the current `pi` role is routed through opencode, expect opencode-like latency there too. claude is ~20-30s, codex ~15s. Set --timeout accordingly on acp-provider-smoke.
+- **opencode is slow through ACP.** Expect ~130s response time on the free
+  tier for opencode dispatches. Claude is ~20-30s, codex ~15s. Set
+  `--timeout` accordingly on `acp-provider-smoke`.
 
-- **Worker timeout is 600s (10 min); escalation is 1800s.** All worker roles (executor, explorer, reviewer, pi) get 600s in `acp_to_run_agent.sh`. Escalation/hard_escalation get 1800s. If a task fails with `worker_timeout`, the task was too broad — break it into focused pieces. Even with 600s, complex multi-step tasks (read files, run scripts, verify, write summary) benefit from decomposition: dispatch "answer questions" as one task, "verify and fix findings" as a second. Each piece should be self-contained.
+- **Worker timeout is 600s (10 min); escalation is 1800s.** Worker roles
+  (executor, explorer, reviewer) get 600s in `acp_to_run_agent.sh`.
+  Escalation roles get 1800s. If a task fails with `worker_timeout`, the task
+  was too broad, so break it into focused pieces.
 
 - **Task decomposition for free-tier workers.** Free-tier models are slower than paid. A task that takes Claude 20s might take a free model 120s. When dispatching complex work (spec execution, multi-file review + action), break it into 2-3 focused dispatches rather than one monolith. Example: (1) "read X and answer Q1-Q7", (2) "verify F1-F12 and fix what's broken", (3) "write summary". Each completes within the timeout.
 
@@ -397,7 +400,7 @@ envelope instead of human-readable text. Every terminal state (success, failure,
 timeout, cancellation) produces the envelope — including partial output on timeout.
 
 ```bash
-acp-task pi home "review X" --wait --json
+acp-task reviewer home "review X" --wait --json
 ```
 
 Returns:

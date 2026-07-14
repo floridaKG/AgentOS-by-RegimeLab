@@ -649,7 +649,7 @@ No knowledge required. The Makefile IS the instruction, executed by `make`.
 need to run should be wrapped in a Makefile target. This turns "know the path"
 into "run the target." Apply this to: test, lint, run, build, deploy, validate.
 
-**Concrete example (project-a):**
+**Concrete example (work workspace):**
 ```makefile
 PYTHON := .venv/Scripts/python.exe
 test:

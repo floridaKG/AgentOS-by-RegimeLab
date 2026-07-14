@@ -45,14 +45,14 @@ $AGENT_OS_HOME/scripts/skill-rank "<query>" [--top N] [--tier <tier>] [--json]
 
 **Examples:**
 ```bash
-# What skills help with deploying project-a?
-skill-rank "project-a deploy"
+# What skills help with deploying the work workspace?
+skill-rank "work deploy"
 
 # What skills help with kanban/ACP dispatch?
 skill-rank "kanban dispatch"
 
-# Only show workspace-project-a skills
-skill-rank "deploy" --tier workspace-project-a
+# Only show workspace-work skills
+skill-rank "deploy" --tier workspace-work
 
 # JSON output for programmatic use
 skill-rank "recall memory" --json
@@ -108,8 +108,8 @@ $AGENT_OS_HOME/scripts/context-pack.sh "<query>" [--budget=<bytes>] [--tiers=<ti
 
 **Examples:**
 ```bash
-# Bundle 8KB of context about project-a deployment
-context-pack "project-a deployment"
+# Bundle 8KB of context about work deployment
+context-pack "work deployment"
 
 # Tighter budget for a cheap model
 context-pack "kanban dispatch" --budget=4000
@@ -143,7 +143,7 @@ $AGENT_OS_HOME/scripts/skill-context.sh "<task text>" [budget_bytes]
 
 **Example (internal use):**
 ```bash
-skill-context "deploy project-a to staging" 4000
+skill-context "deploy work to staging" 4000
 ```
 
 **Output format (emits nothing if below threshold or on error):**

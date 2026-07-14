@@ -40,6 +40,16 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 _AOH = os.environ.get("AGENT_OS_HOME") or os.path.dirname(os.path.abspath(__file__))
 
+# ── Secure temp directory (AGENTS.md: No Temp Writes) ──────────────────────
+_SECURE_TMP_DIR = os.path.join(_AOH, ".local", "state", "tmp")
+
+
+def _ensure_secure_tmp_dir():
+    """Create and return the secure temp directory."""
+    os.makedirs(_SECURE_TMP_DIR, exist_ok=True)
+    return _SECURE_TMP_DIR
+
+
 # ── Constants ──────────────────────────────────────────────────────────────
 
 NAMESPACE = os.environ.get("LESSONS_NAMESPACE", "agent-os-lessons")
@@ -372,8 +382,8 @@ def _upsert_fact(session_id: str, idx: int, fact: str) -> Dict[str, Any]:
     # Sanitize session_id for use as filename prefix (remove path components)
     safe_prefix = re.sub(r'[^a-zA-Z0-9_-]', '_', session_id).strip('_')[:50]
 
-    # Create secure temp file with 0o600 permissions
-    fd, tmp = tempfile.mkstemp(prefix=f"session_upsert_{safe_prefix}_{idx}_", suffix=".json")
+    # Create secure temp file with 0o600 permissions in secure state dir
+    fd, tmp = tempfile.mkstemp(prefix=f"session_upsert_{safe_prefix}_{idx}_", suffix=".json", dir=_ensure_secure_tmp_dir())
     try:
         # Set secure permissions immediately
         os.chmod(tmp, 0o600)

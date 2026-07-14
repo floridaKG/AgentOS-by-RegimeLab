@@ -4,6 +4,7 @@
 # Supports non-interactive test mode: AGENT_OS_TEST=1 ./install.sh
 # Optional flags:
 #   --with-rtk    Install RTK (Rust Token Killer) CLI proxy (requires curl)
+#   --no-path     Do not modify shell profile PATH
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -15,20 +16,24 @@ WORKFLOW_CONFIG_DIR="${HOME}/.config/agent-workflows"
 TEST_MODE="${AGENT_OS_TEST:-0}"
 TEST_HOME="${AGENT_OS_TEST_HOME:-}"
 WITH_RTK=0
+NO_PATH=0
 
 # Parse flags
 for arg in "$@"; do
   case "$arg" in
     --with-rtk) WITH_RTK=1 ;;
+    --no-path) NO_PATH=1 ;;
     --help|-h)
-      echo "Usage: ./install.sh [--with-rtk]"
+      echo "Usage: ./install.sh [--with-rtk] [--no-path]"
       echo ""
       echo "  --with-rtk  Install RTK (Rust Token Killer) CLI proxy (requires curl)"
+      echo "             Advanced opt-in: runs a third-party install script over HTTPS."
+      echo "  --no-path   Do not append \$AGENT_OS_HOME/bin to ~/.bashrc|~/.zshrc|~/.profile"
       exit 0
       ;;
     *)
       echo "Unknown option: $arg"
-      echo "Usage: ./install.sh [--with-rtk]"
+      echo "Usage: ./install.sh [--with-rtk] [--no-path]"
       exit 1
       ;;
   esac
@@ -220,8 +225,9 @@ fi
 # ── Verify bin facades ──
 echo ""
 echo "--- Verifying CLI facades ---"
-for cmd in memory-st memory-lt memory-recall memory-recall-safe memory-inject memory-promote agent-voice team agent-workflow; do
+for cmd in memory-st memory-lt memory-recall memory-recall-safe memory-inject memory-promote agent-voice team agent-workflow hindsight-bridge hindsight-gc hindsight-health; do
   if [ -f "$AGENT_OS_HOME/bin/$cmd" ]; then
+    chmod +x "$AGENT_OS_HOME/bin/$cmd" 2>/dev/null || true
     pass "bin/$cmd"
   else
     echo "  MISSING: bin/$cmd"
@@ -250,6 +256,9 @@ echo ""
 echo "--- Adding bin/ to PATH ---"
 if [ "$TEST_MODE" = "1" ]; then
   skip "Shell profile PATH modification (test mode)"
+elif [ "$NO_PATH" = "1" ]; then
+  skip "Shell profile PATH modification (--no-path)"
+  echo "  Add manually: export PATH=\"\$AGENT_OS_HOME/bin:\$PATH\""
 elif [[ -f "${HOME}/.bashrc" ]] && ! grep -q 'AGENT_OS_HOME/bin' "${HOME}/.bashrc" 2>/dev/null; then
   {
     echo ""
@@ -279,30 +288,34 @@ else
   echo "    export PATH=\"\$AGENT_OS_HOME/bin:\$PATH\""
 fi
 
- # ── Optional: RTK (Rust Token Killer) ──
- echo ""
- echo "--- Optional: RTK (Rust Token Killer) ---"
- if [ "$WITH_RTK" != "1" ]; then
-   echo "  RTK not requested. To install: ./install.sh --with-rtk"
-   echo "  RTK is a CLI proxy that reduces LLM token consumption by 60-90%"
-   echo "  by filtering command outputs before they reach your AI agent."
-   echo "  (Apache 2.0 — github.com/rtk-ai/rtk — external project, not created by Agent OS)"
-   echo "  Requires: curl"
- elif [ "$TEST_MODE" = "1" ]; then
-   skip "RTK installation (test mode)"
- elif ! command -v curl >/dev/null 2>&1; then
-   fail "RTK installation requires curl (not found). Install: apt install curl / brew install curl"
- elif command -v rtk >/dev/null 2>&1; then
-   pass "RTK already installed: $(rtk --version 2>&1)"
- else
-   echo "  Installing RTK from github.com/rtk-ai/rtk..."
-   echo "  (Official install script — full attribution in docs/rtk-usage-guide.md)"
-   if curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | sh; then
-     pass "RTK installed successfully"
-   else
-     echo "  WARNING: RTK installation failed (non-fatal — continuing without it)"
-   fi
- fi
+# ── Optional: RTK (Rust Token Killer) ──
+echo ""
+echo "--- Optional: RTK (Rust Token Killer) ---"
+if [ "$WITH_RTK" != "1" ]; then
+  echo "  RTK not requested. To install: ./install.sh --with-rtk"
+  echo "  RTK is a CLI proxy that reduces LLM token consumption by filtering"
+  echo "  command outputs before they reach your AI agent."
+  echo "  (Apache 2.0 — github.com/rtk-ai/rtk — external project, not Agent OS)"
+  echo "  Requires: curl"
+  echo "  Security: --with-rtk downloads and runs a third-party install script over HTTPS."
+  echo "  Review upstream before use in locked-down environments."
+elif [ "$TEST_MODE" = "1" ]; then
+  skip "RTK installation (test mode)"
+elif ! command -v curl >/dev/null 2>&1; then
+  fail "RTK installation requires curl (not found). Install: apt install curl / brew install curl"
+elif command -v rtk >/dev/null 2>&1; then
+  pass "RTK already installed: $(rtk --version 2>&1)"
+else
+  echo "  SECURITY NOTICE: About to download and execute the official RTK install"
+  echo "  script from https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh"
+  echo "  This is a third-party supply-chain step (not audited by Agent OS)."
+  echo "  Installing RTK from github.com/rtk-ai/rtk..."
+  if curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | sh; then
+    pass "RTK installed successfully"
+  else
+    echo "  WARNING: RTK installation failed (non-fatal — continuing without it)"
+  fi
+fi
 
 # ── Summary ──
 echo ""
@@ -322,6 +335,9 @@ echo "4. Verify: bash $AGENT_OS_HOME/scripts/agent-os-health.sh"
 echo "5. Read AGENTS.md to get started"
 echo ""
 echo "=== Optional Setup ==="
+echo "  ACPx (agent launcher): npm install -g acpx"
+echo "    Without ACPx, ACP dispatch runs in dry-run mode (records what would run)."
+echo "    Requires Node.js 18+: https://nodejs.org/"
 echo "  RTK (token savings):   re-run with: ./install.sh --with-rtk"
 echo "  Knowledge vault:       bash scripts/init-vault.sh --create ~/my-vault"
 echo "  SuperDocs:             bash scripts/init-superdocs.sh --project my-project"

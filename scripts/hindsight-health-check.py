@@ -1,27 +1,21 @@
 #!/usr/bin/env python3
-"""Hindsight health check — verifies the full chain for a Hindsight memory backend.
+"""Hindsight health check — verifies the optional Hindsight memory adapter.
 
-DEFERRED FROM V1 OSS: This health check requires the Hermes + Hindsight API stack,
-which is not bundled with the open-source Agent OS distribution.
-
-For core memory health checks, use `bash $AGENT_OS_HOME/scripts/agent-os-health.sh`.
-
-Original docstring follows:
----
 Checks:
-  1. Config exists and bank is reachable
-  2. hindsight_client is installed
-  3. Hindsight API is responding
-  4. Plugin loads and is_available() returns True
-  5. Bridge state is healthy
+  1. Config (HINDSIGHT_BANK, API URL)
+  2. hindsight_client package installed
+  3. Hindsight API responding
+  4. Bank reachable
 
-Configure via environment:
+For core (SQLite) health, use: bash $AGENT_OS_HOME/scripts/agent-os-health.sh
+
+Configure via environment (see memory/adapters/hindsight/ADAPTER.md):
 
     HINDSIGHT_API_URL=http://127.0.0.1:9177               (default)
     HINDSIGHT_BANK=<your-bank-id>                           (required)
 
 Usage:
-  python3 hindsight-health-check.py
+  python3 $AGENT_OS_HOME/scripts/hindsight-health-check.py
 """
 import json
 import os
@@ -80,10 +74,10 @@ try:
     )
     check("hindsight_client installed", result.returncode == 0,
           result.stderr[:200] if result.returncode != 0 else "",
-          "pip install hindsight-client")
+          "pip install 'hindsight-client>=0.4.22'")
 except Exception as e:
     check("hindsight_client installed", False, str(e),
-          "Ensure hindsight_client is installed in your Python environment")
+          "pip install 'hindsight-client>=0.4.22'")
 
 # 3. Hindsight API responding
 print("\n3. API HEALTH")

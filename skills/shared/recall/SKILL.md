@@ -21,15 +21,16 @@ Single search interface across all memory tiers. The shared contract is the
 CLI floor: any agent with shell access can run `$AGENT_OS_HOME/scripts/recall.sh`
 to ask "what do we already know about X" before doing new work.
 
-The memory tiers (see `memory/README.md` for full architecture):
-1. User memory — `$AGENT_OS_HOME/state/memory/` (user-state path, documented in SETUP.md)
+The default file-search surface is:
+1. User memory — `$AGENT_OS_HOME/state/memory/`
 2. Cockpit — `$AGENT_OS_HOME/memory.md` + `lessons.md`
-3. Workspace — `<workspace>/docs/MEMORY.md` + `LESSONS.md`, `<vault>/self/memory.md`
-4. Vault — `findings/`, `insights/`, `Topics/`
-5. Vector — Pinecone (semantic search via `memory-lt`)
-6. Graph — Neo4j (entity relationships)
-7. Short-term — SQLite via `memory-st`
-8. Sessions — CASS cross-agent session search (raw session history from Claude Code, Codex, OpenCode, etc.)
+3. Workspace — paths configured by `PROJECT_A` and `PROJECT_B`
+4. Vault — `$VAULT/self/memory.md`, `findings/`, and `insights/`
+5. Sessions — CASS cross-agent session search when the local CASS binary exists
+
+`--semantic` delegates to Pinecone through `memory-lt`. `--hybrid` delegates
+to `memory-recall-safe`, which merges the configured short-term, graph,
+semantic, and Claude memory tiers.
 
 ---
 
@@ -37,7 +38,8 @@ The memory tiers (see `memory/README.md` for full architecture):
 
 ### `/recall <query>`
 
-Default: grep all tiers, return top hits with file path + line number.
+Default: search the configured file tiers and CASS, returning top hits with
+file path + line number.
 
 ```bash
 $AGENT_OS_HOME/scripts/recall.sh "<query>"
@@ -45,7 +47,8 @@ $AGENT_OS_HOME/scripts/recall.sh "<query>"
 
 ### `/recall --tier=<name> <query>`
 
-Restrict to one tier: `cockpit`, `user`, `workspace-<name>`, `vault`, `sessions`.
+Restrict to one tier: `cockpit`, `user`, `project-a`, `project-b`, `vault`,
+or `sessions`.
 
 ```bash
 $AGENT_OS_HOME/scripts/recall.sh --tier=<name> "<query>"
@@ -92,7 +95,7 @@ $AGENT_OS_HOME/scripts/context-pack.sh "<query>" --budget=8000
 
 ```
 [cockpit/lessons] line 42: <matching line>
-[project-a/LESSONS]  line 17: <matching line>
+[work/LESSONS]  line 17: <matching line>
 [vault/insights]  insights/2026-04-22-vrp-insight.md:12: <matching line>
 ```
 

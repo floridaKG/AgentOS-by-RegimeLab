@@ -253,7 +253,7 @@ def main():
     # send subcommand
     send_p = sub.add_parser("send", help="Send a new task envelope")
     send_p.add_argument("role", help="Agent role (e.g. executor, explorer)")
-    send_p.add_argument("workspace", help="Target workspace (e.g. home, project-a)")
+    send_p.add_argument("workspace", help="Target workspace (e.g. home, work, docs, vault)")
     send_p.add_argument("objective", help="One-line task description")
     send_p.add_argument("--body", default="", help="Detailed task body")
     send_p.add_argument("--session", default="", help="Named session for persistence")

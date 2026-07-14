@@ -28,7 +28,9 @@ short-term tier available; semantic and graph tiers are optional add-ons.
 Use the `memory-st` CLI to record observations:
 
 ```bash
-memory-st write --intent LESSON --summary "..." --source-ref cli:...
+memory-st write --run-id <run-id> --agent-id <agent-id> \
+  --workspace <workspace> --intent LESSON --kind observation \
+  --summary "..." --content-file <content-file> --source-ref cli:...
 ```
 
 ### Supported Intents
@@ -47,13 +49,13 @@ memory-st write --intent LESSON --summary "..." --source-ref cli:...
 memory-st write --run-id boot-001 --agent-id explorer \
   --workspace cockpit --intent LESSON --kind observation \
   --summary "Always source config.env before calling health checks" \
-  --source-ref cli:manual
+  --content-file lesson.txt --source-ref cli:manual
 
 # Record a stumble
 memory-st write --run-id boot-001 --agent-id explorer \
   --workspace cockpit --intent STUMBLE --kind bug \
   --summary "BOOT_FACTS.yaml missing caused boot failure at step 2" \
-  --source-ref cli:manual
+  --content-file stumble.txt --source-ref cli:manual
 ```
 
 ## Recalling from Memory
@@ -102,10 +104,10 @@ Capture → Filter → Promote → Prune
 3. **Promote** — stable facts written to semantic/graph memory or source docs
 4. **Prune** — long-term memory stays curated, not an unbounded dump
 
-Records with intent LESSON, STUMBLE, DECISION, or CONFIRMED are
-auto-promoted to Pinecone (if configured) and graph-promoted to Neo4j
-(if configured). The recall hook injects recently promoted memories into
-new agent sessions.
+Records with intent LESSON, STUMBLE, DECISION, or CONFIRMED are eligible for
+promotion to Pinecone or Neo4j when those adapters are configured. Promotion
+is performed explicitly with `memory-promote`. The recall hook can inject
+recently promoted memories into new agent sessions.
 
 ### Manual promotion
 
@@ -113,8 +115,12 @@ new agent sessions.
 # Show promotion candidates without writing to optional providers
 memory-promote --target st-vector --dry-run --limit 5
 
-# Promote one record to any configured long-term tier
-memory-promote --id <record-id> --target auto
+# Promote one short-term record to the graph tier
+memory-promote --target graph --short-term-id <record-id> \
+  --reason "stable lesson"
+
+# Print promotion backlog and provider health
+memory-promote --target report
 ```
 
 If Pinecone or Neo4j is not configured, long-term operations fail closed with

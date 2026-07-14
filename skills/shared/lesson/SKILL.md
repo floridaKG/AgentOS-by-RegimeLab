@@ -34,8 +34,8 @@ Before writing, classify the lesson by scope:
 | Question | If yes → Destination |
 |---|---|
 | Does it apply in 2+ workspaces, or to the agent OS / cockpit itself? | Agent OS ST (`memory-st write --intent LESSON`) → auto-generates `$AGENT_OS_HOME/lessons.md` |
-| Is it strictly Project B? | `<project-b>/docs/LESSONS.md` |
-| Is it strictly Project A? | `<project-a>/docs/LESSONS.md` |
+| Is it strictly the docs workspace? | `<docs>/docs/LESSONS.md` |
+| Is it strictly the work workspace? | `<work>/docs/LESSONS.md` |
 | Is it strictly the vault? | `<vault>/docs/vault-os/LESSONS.md` |
 | Is it about the user (role, preference)? | `$AGENT_OS_HOME/state/memory/` (NOT this skill — use auto-memory) |
 
@@ -45,7 +45,7 @@ records (weekly cron + immediate regeneration after write). Do NOT edit
 lessons.md directly.
 
 Workspace paths (resolved from `config.env`):
-- project-a, project-b, and vault: user-configured via `config.env`
+- work, docs, and vault: user-configured via `config.env`
 Run `cat $AGENT_OS_HOME/config.env` to see all configured workspace paths.
 
 ---
@@ -66,7 +66,7 @@ Run `cat $AGENT_OS_HOME/config.env` to see all configured workspace paths.
 3. **Write to Agent OS short-term memory (canonical write path):**
    ```bash
    # Write content to temp file
-   CONTENT_FILE=$(mktemp /tmp/lesson-XXXXXX.txt)
+   CONTENT_FILE=$(mktemp "$AGENT_OS_HOME/.local/state/tmp/lesson-XXXXXX.txt")
    cat > "$CONTENT_FILE" << 'LESSON_EOF'
    **Why:** [what failure or constraint caused this]
    **How to apply:** [when this kicks in, where to check]

@@ -6,11 +6,16 @@ production SuperDocs, credentials, memories, or service state.
 
 ## What users install
 
-- Agent OS core with local SQLite memory and five CLI entry points.
-- Eight curated shared skills.
+- Agent OS **Local Core**: SQLite memory plus CLI entry points under `bin/`
+  (memory, ACP, voice, mail, stumble pipeline, unified `agent-os` CLI).
+- Curated shared skills under `skills/shared/` (see `registry/skills.yaml`).
 - Public-only registries, scripts, setup documentation, and health checks.
-- Optional Pinecone and Neo4j adapter contracts.
+- Optional Pinecone, Neo4j, and Hindsight adapter contracts (off until configured;
+  Hindsight bridge/GC/health ship and work when `hindsight-client` + API + bank are set).
 - CodeGraph and ACPx reference docs (external MIT dependencies, not bundled).
+
+Counts drift as the tree evolves — treat `registry/*.yaml` and `bin/` as truth,
+not this paragraph.
 
 ## Optional components
 
@@ -29,21 +34,32 @@ redistribution are permitted.
 ## Setup
 
 Follow `SETUP.md`. The minimum installation uses local SQLite only and requires
-no Vault, SuperDocs, Pinecone, Neo4j, advanced private memory provider, or
-private runtime service.
+no Vault, SuperDocs, Pinecone, Neo4j, ACPx, or private runtime services.
 
 ## Verification
 
 Run:
 
 ```bash
+pip install -r requirements.txt   # PyYAML required by gates
 bash scripts/gate-release.sh
 ```
+
+CI runs the same gates on every push to `main`. Do not flip the repository
+public while CI is red.
 
 The authoritative gate validates privacy, binary content, syntax, registries,
 negative leak fixtures, clean-room installation, first memory write/query,
 idempotency, Vault OS, SuperDocs, manifest coverage, permissions, and absence
-of Git metadata.
+of nested Git metadata in export trees.
 
 Top-level `.ossbuild/` contains private build evidence and is explicitly
-non-shipping. Publishing must use `.ossbuild/EXPORT_MANIFEST.yaml`.
+non-shipping (gitignored).
+
+## Platform support (v1)
+
+| Platform | Status |
+|----------|--------|
+| Linux | Tested |
+| WSL2 | Tested |
+| macOS | Not verified — unsupported for v1 claims |

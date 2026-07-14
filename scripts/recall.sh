@@ -138,10 +138,10 @@ format_explain_grep() {
 }
 
 if [[ $HYBRID -eq 1 ]]; then
-  MEMORY_LT="$AGENT_OS_HOME/bin/memory-lt"
+  MEMORY_RECALL="$AGENT_OS_HOME/bin/memory-recall-safe"
   PY="$COCKPIT/.venv/bin/python"
   [[ -x "$PY" ]] || PY="python3"
-  "$MEMORY_LT" search-hybrid --text "$QUERY" --limit 5 \
+  "$MEMORY_RECALL" --text "$QUERY" --limit 5 \
     | "$PY" -c '
 import json, sys
 d = json.load(sys.stdin)
@@ -149,19 +149,20 @@ if not d.get("ok", False):
     print("[recall] hybrid search failed: {}".format(d.get("error","?")), file=sys.stderr)
     sys.exit(1)
 hits = d.get("results", [])
-c = d.get("counts", {})
-v = c.get("vector", 0); f = c.get("fts", 0); g = c.get("graph", 0)
 q = d.get("query", "?")
-print("-- recall hybrid: {} merged hits (vector={} fts={} graph={}) --".format(len(hits), v, f, g))
+tiers = d.get("tier_results", {})
+counts = {name: value.get("result_count", 0) for name, value in tiers.items()}
+print("-- recall hybrid: {} merged hits ({}) --".format(
+    len(hits), ", ".join("{}={}".format(k, v) for k, v in counts.items())))
 if not hits:
     print("No hybrid matches for {!r}.".format(q))
     sys.exit(0)
 for h in hits:
-    tiers = ",".join(sorted({t["tier"] for t in h.get("tiers",[])}))
-    rrf = h.get("rrf_score", 0.0)
-    src = h.get("source_path") or "?"
+    tier = h.get("tier", "?")
+    score = float(h.get("score", 0) or 0)
+    src = h.get("source_path") or h.get("source_ref") or "?"
     summary = " ".join((h.get("summary") or "").split())[:140]
-    print("[{}] [rrf={:.5f}] {} :: {}".format(tiers, rrf, src, summary))
+    print("[{}] [score={:.5f}] {} :: {}".format(tier, score, src, summary))
 '
   exit 0
 fi

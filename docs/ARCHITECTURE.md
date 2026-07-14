@@ -59,7 +59,7 @@ and promotes selected knowledge into longer-lived stores.
 | Short-Term | SQLite (local) | **Always on** | Recent activity, lessons, stumbles, tool output |
 | Semantic | Pinecone (optional) | Off | Vector search for cross-session recall |
 | Graph | Neo4j (optional) | Off | Entity relationships, provenance, source tracking |
-| Advanced | Hindsight | Deferred from v1 — not functional in public release | Requires Hermes + Hindsight API (private runtime); bridge file provided for reference only |
+| Hindsight bank | Hindsight API + bridge (optional) | Off | Import bank digests into ST; GC tools |
 
 ### Memory Profiles
 
@@ -68,7 +68,8 @@ and promotes selected knowledge into longer-lived stores.
 | **Local/Core** | SQLite only | Default. Works offline, zero external services |
 | **Semantic** | SQLite + Pinecone | Cross-session semantic recall |
 | **Graph** | SQLite + Neo4j | Relationship-based memory queries |
-| **Full** | All three | Maximum capabilities |
+| **Hindsight** | SQLite + Hindsight bridge | Digest export from a Hindsight bank |
+| **Full** | Any combination | Maximum capabilities for your setup |
 
 ### Promotion Pipeline
 

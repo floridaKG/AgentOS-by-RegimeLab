@@ -218,6 +218,8 @@ if tests_dir.exists():
     for p in tests_dir.rglob('*'):
         if p.is_dir():
             continue
+        if '__pycache__' in p.parts or p.suffix == '.pyc':
+            continue
         rel = str(p.relative_to(tests_dir))
         if rel in tests_declared:
             continue

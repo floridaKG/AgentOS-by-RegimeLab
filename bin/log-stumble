@@ -84,8 +84,12 @@ AGENT_ID="${AGENT_ID:-${ACP_AGENT_ID:-cli}}"
 # Use real run ID if available, otherwise generate one
 RUN_ID="${RUN_ID:-log-stumble-$(date +%Y%m%d-%H%M%S)}"
 
-# ── Temp directory (portable: respect $TMPDIR) ─────────────────────────────
-_TMPDIR="${TMPDIR:-/tmp}"
+# ── Temp directory (AGENTS.md: No Temp Writes — use secure state dir) ──────
+# AGENT_OS_HOME is expected to be set; compute from script location as fallback.
+_AOH="${AGENT_OS_HOME:-$(dirname "$(dirname "$(readlink -f "$0")")")}"
+_SECURE_TMP="${_AOH}/.local/state/tmp"
+_TMPDIR="${TMPDIR:-$_SECURE_TMP}"
+mkdir -p "$_TMPDIR"
 CONTENT_FILE=$(mktemp "$_TMPDIR/log-stumble-XXXXXX.txt")
 if [ -n "$CONTENT" ]; then
     echo "$CONTENT" > "$CONTENT_FILE"

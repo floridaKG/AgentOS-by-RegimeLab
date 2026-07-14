@@ -1,37 +1,54 @@
 # Agent OS
 
-An agent-agnostic harness -- the OS agents run on.
+An agent-agnostic harness — the OS agents run on.
 
 Agent OS is a CLI-first harness for orchestrating supported AI coding agents
-(Claude Code, Codex, OpenCode, and future models)
-as first-class citizens in a shared, memory-driven system.
+(Claude Code, Codex, OpenCode, and compatible providers) with shared local
+memory, dispatch protocols, and cross-agent learning.
+
+## What you get out of the box (Local Core)
+
+After `./install.sh` you have:
+
+- **Local memory** — SQLite short-term store, write/recall CLIs, stumble pipeline
+- **CLI harness** — `bin/` tools for memory, health, skills, mail, voice
+- **Workflow config** — role templates and multi-agent scripts under
+  `~/.config/agent-workflows/`
+- **Curated skills** — shared skill packs agents can load on demand
+- **Gates** — privacy, history, clean-room, and release verification scripts
+
+No Node.js, no hosted services, and no third-party vector/graph DBs required
+for Local Core.
+
+## Multi-agent dispatch (optional)
+
+ACP task dispatch and multi-agent workflows (swarm, council, MOE panels) need
+extra pieces **you** install:
+
+| Need | Why |
+|------|-----|
+| At least one agent CLI | Claude Code, Codex, and/or OpenCode |
+| [ACPx](https://www.npmjs.com/package/acpx) (`npm install -g acpx`) | Launches agents for real ACP dispatch |
+| Node.js 18+ | Only if you install ACPx or CodeGraph |
+| LLM API keys | Required by the agent CLIs you use |
+
+Without ACPx, `acp-daemon` runs in **dry-run** mode (records what would run).
+That is intentional — Local Core stays usable offline.
+
+**RTK (optional token savings):** Install via `./install.sh --with-rtk` to
+reduce LLM token consumption. RTK is an external Apache 2.0 tool that
+filters command outputs before they reach your AI agent.
 
 ## Philosophy
 
-- **Agent-agnostic.** Supported agents participate equally. Easy to incorporate
-  new models without rewiring the system.
-- **Cross-agent memory.** Every agent contributes to shared memory.
-  Stumbles are captured, reviewed, and promoted so all agents learn together.
-- **Multi-agent, multi-provider.** Agents call each other through ACP and
-  Agent Mail. Providers are swappable. No lock-in at any layer.
-- **Enforced protocols.** The harness enforces the rules so agents don't
-  have to rediscover them every session.
-- **Agent voice.** Agents speak up about gaps and friction. The system
-  listens and improves itself.
-- **Multi-provider orchestration.** MOE panels can combine Claude, Codex,
-  OpenCode, and compatible providers through user-editable configuration.
+- **Agent-agnostic.** Supported agents participate equally.
+- **Cross-agent memory.** Agents write lessons and stumbles into shared local memory.
+- **Multi-agent, multi-provider.** Optional ACP + ACPx; providers are swappable.
+- **Enforced protocols.** Gates and boot docs keep sessions consistent.
+- **Agent voice.** Agents can surface friction for maintainers to review.
 
 This is a **harness**, not a framework. Frameworks are libraries you import.
-The harness is the OS agents run on top of. Agent OS owns the outcome,
-learns from its mistakes, and gets better every cycle.
-
-## Features
-
-### Agent Communication
-
-- **ACP (Agent Communication Protocol)** — Route work to configured agents and workspaces. Fire-and-forget or wait-for-result dispatch with role-based routing and workspace awareness. Ships with `acp-task`, `acp-daemon`, and `acp-health` CLI tools.
-- **Agent Mail** — Async file-based messaging between agents. Send, inbox, and read messages without a running daemon. Lightweight and zero-dependency.
-- **Agent Voice** — Agents surface gaps, friction, and improvement suggestions. The system listens and improves itself.
+The harness is the OS agents run on top of.
 
 ## Quickstart
 
@@ -39,52 +56,44 @@ learns from its mistakes, and gets better every cycle.
 git clone https://github.com/floridaKG/AgentOS-by-RegimeLab.git
 cd AgentOS-by-RegimeLab
 ./install.sh
+source ~/.config/agent-os/config.env
+bash scripts/agent-os-health.sh
 ```
 
-Minimum requirements: Python 3.10+, Node.js 18+, Git, and one LLM provider
-API key.
+**Minimum requirements (Local Core):** Python 3.10+, Git, Bash, and one LLM
+provider API key for the agent CLI you use.
 
-See `SETUP.md` for full instructions.
+**Platforms:** Linux and WSL2 are tested. macOS is **not yet verified** — may
+work, but is not a supported v1 target.
 
-## Optional Components
+See `SETUP.md` for full instructions, optional adapters, and multi-agent setup.
 
-- **Vault OS**: A user-owned knowledge vault for storing structured notes,
-  research, and agent-readable content. Create or link with
-  `scripts/init-vault.sh`. The public release provides structural scaffolding,
-  not personalized domain skill packs.
-
-- **SuperDocs**: A project documentation harness that agents can navigate.
-  Scaffold with `scripts/init-superdocs.sh --project <name>`.
-
-## Core vs Optional Providers
+## Optional components
 
 | Component | Status | Default |
 |-----------|--------|---------|
-| Memory (SQLite) | Core - always available | On |
-| Agent Communication Protocol (ACP) | Core - always available | On |
-| Agent Voice (agent feedback) | Core - always available | On |
-| ACPx (universal agent launcher) | External dependency (MIT) | Off (npm install -g acpx) |
-| CodeGraph (code structure queries) | External dependency | Off (npm install -g @codegraph/cli) |
-| Pinecone (semantic search) | Optional adapter | Off (needs API key) |
-| Neo4j (graph memory) | Optional adapter | Off (needs credentials) |
-| Hindsight (advanced memory) | Deferred from v1 — not functional in public release | Off |
-
-The default install works with zero external services. All adapters are optional.
+| Memory (SQLite) | Core | On |
+| Agent Communication Protocol (ACP CLIs) | Core (dry-run without ACPx) | On |
+| Agent Voice | Core | On |
+| ACPx (agent launcher) | External (MIT) | Off — `npm install -g acpx` |
+| CodeGraph | External | Off — `npm install -g @codegraph/cli` |
+| RTK (token filter CLI) | External (Apache 2.0) | Off — `./install.sh --with-rtk` |
+| Pinecone (semantic search) | Optional adapter | Off |
+| Neo4j (graph memory) | Optional adapter | Off |
+| Hindsight (memory bank bridge) | Optional adapter | Off — see `memory/adapters/hindsight/` |
+| Vault OS / SuperDocs scaffolds | Optional examples | Off — init scripts |
 
 ## License
 
 Apache 2.0. See `LICENSE`. Full commercial use, modification, and
 redistribution are permitted under the terms of the license.
 
-## Commercial Boundary
+## Commercial boundary
 
-Agent OS is published under the Apache 2.0 license -- the full harness is
-free and open source. The following capabilities are reserved for managed
-or commercial product offerings (not OSS license restrictions):
+Agent OS is open-core under Apache 2.0. Hosted memory, managed governance,
+and enterprise controls are reserved for commercial offerings — not license
+restrictions on the OSS harness. See `COMMERCIAL_BOUNDARY.md`.
 
-- **Hosted memory plane**: Managed Pinecone and Neo4j infrastructure
-- **Managed governance**: Team controls and observability
-- **Premium adapters**: Advanced retrieval, ranking, and analytics
-- **Enterprise features**: SSO, compliance, retention policies
+## Security
 
-See `COMMERCIAL_BOUNDARY.md` for the complete open-core boundary.
+See `SECURITY.md` for how to report vulnerabilities.

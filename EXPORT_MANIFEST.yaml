@@ -28,6 +28,7 @@ allowlist:
     - requirements.txt
     - CODE_OF_CONDUCT.md
     - CONTRIBUTING.md
+    - SECURITY.md
     - .gitattributes
     - .gitignore
 
@@ -56,6 +57,9 @@ allowlist:
       - stumble-triage
       - stumble-review
       - stumble-cleanup
+      - hindsight-bridge
+      - hindsight-gc
+      - hindsight-health
 
   # --- ACP config (agent-workflows configuration) ---
   bin_acp_config:
@@ -118,7 +122,6 @@ allowlist:
       - adversarial-review
       - codegraph-tools
       - umbrella-refactor
-      - cline
       - sidecar-heavy
     note: "Only the listed skills are curated for OSS. All others are excluded."
 
@@ -161,6 +164,7 @@ allowlist:
       - core/schema_neo4j.cypher
       - adapters/pinecone/ADAPTER.md
       - adapters/neo4j/ADAPTER.md
+      - adapters/hindsight/ADAPTER.md
       - hindsight_bridge.py
       - hindsight_gc.py
     exclude_patterns:
@@ -206,7 +210,6 @@ allowlist:
       - stumble-propose-rule.py
       - stumble-resolve-bridge.py
     exclude_patterns:
-      - hindsight-cron*
       - stumble-digest*
       - vault*
       - regime*
@@ -246,6 +249,7 @@ allowlist:
       - privacy/privacy_gate_negative.sh
       - security/ci_docs_hardening.sh
       - security/test_runtime_security.py
+      - test-hindsight-adapter.sh
 
   # --- Examples: Vault-OS ---
   examples_vault_os:

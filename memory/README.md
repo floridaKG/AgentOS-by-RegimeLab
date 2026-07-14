@@ -12,6 +12,9 @@ agent-os/memory/
   adapters/
     pinecone/         # Optional semantic search (Pinecone)
     neo4j/            # Optional graph memory (Neo4j)
+    hindsight/        # Optional Hindsight bank bridge + GC
+  hindsight_bridge.py # Export Hindsight digests → short-term SQLite
+  hindsight_gc.py     # Hindsight bank lifecycle
   README.md           # This file
 ```
 
@@ -22,7 +25,8 @@ agent-os/memory/
 | **Local/core** | SQLite short-term + lesson files | Yes | None needed |
 | **Semantic** | Local + Pinecone vector search | No | `PINECONE_API_KEY` |
 | **Graph** | Local + Neo4j relationship graph | No | `NEO4J_*` credentials |
-| **Full** | Local + Pinecone + Neo4j | No | All credentials |
+| **Hindsight** | Local + Hindsight bank bridge/GC | No | `HINDSIGHT_BANK` + API |
+| **Full** | Local + any combination of adapters | No | Per-adapter credentials |
 
 The default install starts in **Local/core** mode. No external service
 credentials are required.
@@ -48,10 +52,10 @@ credentials are required.
   similarity search. Activated when `PINECONE_API_KEY` is set.
 - **Neo4j** (`adapters/neo4j/`): Graph relationship storage for structured
   memory queries. Activated when `NEO4J_URI` is set.
-
-### Deferred (not in v1 OSS)
-
-- **Hindsight**: The `hindsight_bridge.py` and `hindsight_gc.py` modules are DEFERRED FROM V1. They require Hermes + Hindsight API, which is not bundled with the open-source distribution. These files are provided for reference only. For core memory operations, use `memory-st` and `recall` (SQLite-based).
+- **Hindsight** (`adapters/hindsight/`, `hindsight_bridge.py`, `hindsight_gc.py`):
+  Optional bank bridge. Install `hindsight-client`, set `HINDSIGHT_BANK`, run
+  the bridge to export digests into SQLite. Full guide:
+  `adapters/hindsight/ADAPTER.md`.
 
 ## Environment Variables
 
@@ -63,6 +67,9 @@ credentials are required.
 | `NEO4J_URI` | No | Enables Neo4j graph adapter |
 | `NEO4J_USER` | No | Neo4j username |
 | `NEO4J_PASSWORD` | No | Neo4j password |
+| `HINDSIGHT_BANK` | No | Enables Hindsight bridge/GC (bank id) |
+| `HINDSIGHT_API_URL` | No | Hindsight API base (default `http://127.0.0.1:9177`) |
+| `HINDSIGHT_PROFILE` | No | Provenance label (default `default`) |
 
 ## Fallback Behavior
 

@@ -11,27 +11,29 @@ external services.
 
 ## Prerequisites
 
-### Required
+### Required (Local Core)
 
 - **Python 3.10+** — check with `python3 --version`
 - **Git** — check with `git --version`
-- **Bash** — standard on Linux, macOS, and WSL2
-- **One LLM provider API key** — OpenAI, Anthropic, or OpenRouter-compatible
+- **Bash** — standard on Linux and WSL2
+- **One LLM provider API key** — for the agent CLI you use (Claude Code, Codex, OpenCode, etc.)
 
-### Optional
+### Optional (not part of Local Core)
 
-- **curl** — needed only for RTK installation (`./install.sh --with-rtk`)
-- **Node.js 18+ and npm** — needed only for ACPx and CodeGraph plugins (not part of default install)
-- **Pinecone API key** — needed only for semantic memory (vector search across sessions)
-- **Neo4j credentials** — needed only for graph memory (relationship-based queries)
+- **curl** — only for advanced RTK install (`./install.sh --with-rtk`)
+- **Node.js 18+ and npm** — only if you install ACPx or CodeGraph
+- **ACPx** — `npm install -g acpx` for real multi-agent dispatch (without it, ACP dry-runs)
+- **Pinecone API key** — semantic memory (vector search across sessions)
+- **Neo4j credentials** — graph memory (relationship-based queries)
+- **Hindsight** — optional memory bank (`pip install hindsight-client` + running API)
 
 ### Supported Platforms
 
 | Platform | Status |
 |---|---|
-| Linux (Debian/Ubuntu, Fedora, Arch) | ✅ Tested |
-| WSL2 (Windows Subsystem for Linux) | ✅ Tested |
-| macOS | ⚠️ Not yet verified — may work, not actively tested |
+| Linux (Debian/Ubuntu, Fedora, Arch) | ✅ Tested (v1 supported) |
+| WSL2 (Windows Subsystem for Linux) | ✅ Tested (v1 supported) |
+| macOS | ⚠️ Not verified — unsupported for v1 claims |
 
 ## Windows Users (WSL2)
 
@@ -80,9 +82,10 @@ extracted directory.
 8. **Auto-adds `$AGENT_OS_HOME/bin` to PATH** in your shell profile (`~/.bashrc`, `~/.zshrc`, or `~/.profile`)
 
 **What the installer does NOT install by default:**
-- RTK (Rust Token Killer) — opt in with `./install.sh --with-rtk`
+- RTK (Rust Token Killer) — advanced opt-in with `./install.sh --with-rtk` (downloads a third-party install script over HTTPS)
 - ACPx (universal agent launcher) — external npm package, install separately
 - CodeGraph (structural code queries) — external npm package, install separately
+- Shell profile edits — skip with `./install.sh --no-path` if you manage PATH yourself
 
 The installer is **idempotent** — running it again is safe and will not
 overwrite existing configuration files.
@@ -134,6 +137,9 @@ export PATH="$AGENT_OS_HOME/bin:$PATH"
 | `NEO4J_URI` | No | — | Neo4j connection URI (optional) |
 | `NEO4J_USER` | No | — | Neo4j username (optional) |
 | `NEO4J_PASSWORD` | No | — | Neo4j password (optional) |
+| `HINDSIGHT_BANK` | No | — | Hindsight bank id (optional adapter) |
+| `HINDSIGHT_API_URL` | No | `http://127.0.0.1:9177` | Hindsight API base URL |
+| `HINDSIGHT_PROFILE` | No | `default` | Provenance label for digests |
 
 ## Memory Profiles
 
@@ -142,7 +148,8 @@ export PATH="$AGENT_OS_HOME/bin:$PATH"
 | **Local/Core** | SQLite only | Default. Works offline, no external deps |
 | **Semantic** | Local + Pinecone | Cross-session semantic recall |
 | **Graph** | Local + Neo4j | Relationship-based memory queries |
-| **Full** | Local + Pinecone + Neo4j | Maximum memory capabilities |
+| **Hindsight** | Local + Hindsight bridge/GC | Import digests from a Hindsight bank |
+| **Full** | Local + any combination | Maximum memory capabilities for your setup |
 
 The default install uses **Local/Core**. All other profiles require
 additional configuration and external services.
@@ -165,6 +172,31 @@ export NEO4J_URI="neo4j+s://your-instance.databases.neo4j.io"
 export NEO4J_USER="your-username"
 export NEO4J_PASSWORD="your-password"
 ```
+
+### Enabling Hindsight (Optional)
+
+Hindsight is a **working optional adapter**, not a stub. Full guide:
+`memory/adapters/hindsight/ADAPTER.md`.
+
+```bash
+# 1. Client package
+pip install 'hindsight-client>=0.4.22'
+
+# 2. Config (config.env or secrets.env)
+export HINDSIGHT_API_URL="http://127.0.0.1:9177"
+export HINDSIGHT_BANK="your-bank-id"
+export HINDSIGHT_PROFILE="default"
+
+# 3. Verify
+hindsight-health
+# or: python3 $AGENT_OS_HOME/scripts/hindsight-health-check.py
+
+# 4. Export digests into Agent OS short-term memory
+hindsight-bridge --dry-run --limit 20
+hindsight-bridge --limit 50
+```
+
+Requires a running Hindsight API. Local Core SQLite keeps working if you skip this.
 
 ## Verifying Installation
 
@@ -404,10 +436,10 @@ to run them automatically.
 
 ```bash
 # Daily stumble triage at 2 AM
-0 2 * * * /bin/bash -c 'source ~/.config/agent-os/config.env && AGENT_OS_HOME/bin/stumble-triage'
+0 2 * * * /bin/bash -c 'source ~/.config/agent-os/config.env && $AGENT_OS_HOME/bin/stumble-triage'
 
 # Weekly cleanup on Sunday at 3 AM
-0 3 * * 0 /bin/bash -c 'source ~/.config/agent-os/config.env && AGENT_OS_HOME/bin/stumble-cleanup'
+0 3 * * 0 /bin/bash -c 'source ~/.config/agent-os/config.env && $AGENT_OS_HOME/bin/stumble-cleanup'
 ```
 
 **Manual workflow** (run interactively):
@@ -448,8 +480,9 @@ structure without overwriting your configuration.
 Agent OS does not use system-wide installation. To remove:
 
 1. Remove the agent-os directory: `rm -rf /path/to/agent-os`
-2. Remove config: `rm -rf ~/.config/agent-os`
-3. Remove memory state: `rm -rf $AGENT_OS_HOME/.local/state/agent-os`
+2. Remove config: `rm -rf ~/.config/agent-os` and `rm -rf ~/.config/agent-workflows`
+3. Remove memory state: `rm -rf ~/.local/state/agent-os`
+4. Remove any PATH lines you added to `~/.bashrc` / `~/.zshrc` / `~/.profile`
 
 Or archive by moving the directory.
 

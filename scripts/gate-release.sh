@@ -309,7 +309,7 @@ while IFS= read -r f; do
     echo "  FAIL: $f has perms $PERMS (expected 755)"
     PERM_FAILURES=$((PERM_FAILURES+1))
   fi
-done < <(find "$STAGING_DIR/bin" -type f 2>/dev/null)
+done < <(find "$STAGING_DIR/bin" -type f ! -path "*/__pycache__/*" ! -name "*.pyc" 2>/dev/null)
 
 # Check non-entrypoint .py files are 644
 while IFS= read -r f; do

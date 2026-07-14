@@ -1,40 +1,28 @@
 #!/usr/bin/env python3
 """
-hindsight_bridge.py — Hindsight -> Agent OS short-term memory digest bridge.
+hindsight_bridge.py — Hindsight → Agent OS short-term memory digest bridge.
 
-DEFERRED FROM V1 OSS: This module requires the Hermes + Hindsight API stack,
-which is not part of the open-source Agent OS distribution. It is provided
-here for reference and will be activated in a future release when the
-Hindsight adapter is open-sourced.
+Optional adapter: exports filtered Hindsight memories into Agent OS short-term
+memory with explicit provenance. Local Core (SQLite) works without this module.
 
-DO NOT use this bridge in production OSS deployments. It depends on:
-  - hindsight_client Python package (not in requirements.txt)
-  - Hindsight API running locally (http://127.0.0.1:9177)
-  - Hermes runtime (not bundled)
+Dependencies (optional — only when enabling Hindsight):
+  - pip install 'hindsight-client>=0.4.22'
+  - A running Hindsight API (default http://127.0.0.1:9177)
+  - HINDSIGHT_BANK set to your bank id
 
-For local-core memory, use `memory-st` and `recall` which work with SQLite
-only and require no external services.
+Configure via environment (see memory/adapters/hindsight/ADAPTER.md):
 
-Original docstring follows:
----
-hindsight_bridge.py — Hindsight -> Agent OS short-term memory digest bridge.
-
-Exports filtered Hindsight memories into Agent OS short-term memory with
-explicit provenance. This is the only supported seam from a Hindsight memory
-bank into the shared Agent OS memory plane.
-
-Requires Hermes + Hindsight API running locally. Configure via environment:
-
+    AGENT_OS_HOME=/path/to/agent-os                          (required)
     HINDSIGHT_API_URL=http://127.0.0.1:9177                (default)
     HINDSIGHT_BANK=<your-bank-id>                            (required)
-    HINDSIGHT_PROFILE=hermes                                 (default)
-    AGENT_OS_HOME=/path/to/agent-os                          (required)
+    HINDSIGHT_PROFILE=default                                (default)
+    HINDSIGHT_STATE_DIR=~/.local/state/agent-os/hindsight    (default)
 
 Usage:
 
-    # Run via the Python environment that has hindsight_client installed:
-    python3 hindsight_bridge.py --dry-run
-    python3 hindsight_bridge.py --limit 50
+    python3 $AGENT_OS_HOME/memory/hindsight_bridge.py --dry-run
+    python3 $AGENT_OS_HOME/memory/hindsight_bridge.py --limit 50
+    # or: hindsight-bridge --dry-run  (bin facade after install)
 """
 
 from __future__ import annotations
@@ -55,23 +43,20 @@ from typing import Any, Dict, List
 AGENT_OS_HOME = os.environ.get("AGENT_OS_HOME", "").strip()
 HINDSIGHT_API_URL = os.environ.get("HINDSIGHT_API_URL", "http://127.0.0.1:9177")
 HINDSIGHT_BANK = os.environ.get("HINDSIGHT_BANK", "").strip()
-HINDSIGHT_PROFILE = os.environ.get("HINDSIGHT_PROFILE", "hermes")
+HINDSIGHT_PROFILE = os.environ.get("HINDSIGHT_PROFILE", "default")
 
-if not AGENT_OS_HOME:
-    print("FATAL: AGENT_OS_HOME environment variable must be set.", file=sys.stderr)
-    sys.exit(2)
-if not HINDSIGHT_BANK:
-    print("FATAL: HINDSIGHT_BANK environment variable must be set.", file=sys.stderr)
-    sys.exit(2)
-
-MEMORY_ST = os.environ.get("MEMORY_ST_BIN", f"{AGENT_OS_HOME}/bin/memory-st")
-STATE_DIR = Path(os.environ.get("HINDSIGHT_STATE_DIR", f"{AGENT_OS_HOME}/memory/state"))
+_DEFAULT_STATE = Path.home() / ".local" / "state" / "agent-os" / "hindsight"
+STATE_DIR = Path(os.environ.get("HINDSIGHT_STATE_DIR", str(_DEFAULT_STATE)))
 CURSOR_PATH = STATE_DIR / "hindsight_cursor.json"
 HEARTBEAT_PATH = Path(
     os.environ.get(
         "HINDSIGHT_HEARTBEAT_LOG",
-        str(Path.home() / ".hermes/logs/memory/hindsight-bridge.log"),
+        str(STATE_DIR / "hindsight-bridge.log"),
     )
+)
+MEMORY_ST = os.environ.get(
+    "MEMORY_ST_BIN",
+    f"{AGENT_OS_HOME}/bin/memory-st" if AGENT_OS_HOME else "memory-st",
 )
 
 DENIED_PATTERNS = [
@@ -349,7 +334,9 @@ def _already_written(fingerprint: str) -> bool:
 
 def _write_digest(unit: Dict[str, Any], summary: str, content: str, fingerprint: str) -> Dict[str, Any]:
     source_ref = _source_ref(unit)
-    tmp_path = Path(f"/tmp/hindsight_digest_{unit['id']}.txt")
+    digest_dir = STATE_DIR / "digests"
+    digest_dir.mkdir(parents=True, exist_ok=True)
+    tmp_path = digest_dir / f"hindsight_digest_{unit['id']}.txt"
     fd = os.open(str(tmp_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as fh:
         fh.write(content)
@@ -377,7 +364,7 @@ def _write_digest(unit: Dict[str, Any], summary: str, content: str, fingerprint:
     try:
         rc, stdout, stderr = _run_cli(cmd)
     finally:
-        archive_dir = Path("/tmp/agent-os-hindsight/archive")
+        archive_dir = STATE_DIR / "archive"
         archive_dir.mkdir(parents=True, exist_ok=True)
         try:
             tmp_path.replace(archive_dir / f"{tmp_path.name}.{int(time.time())}")
@@ -430,6 +417,31 @@ def main() -> None:
     ap.add_argument("--sleep", type=float, default=0.1)
     args = ap.parse_args()
 
+    if not AGENT_OS_HOME:
+        print(
+            json.dumps(
+                {
+                    "ok": False,
+                    "error": "AGENT_OS_HOME is not set. source ~/.config/agent-os/config.env",
+                }
+            )
+        )
+        sys.exit(2)
+    if not HINDSIGHT_BANK:
+        print(
+            json.dumps(
+                {
+                    "ok": False,
+                    "error": (
+                        "HINDSIGHT_BANK is not set. "
+                        "export HINDSIGHT_BANK=<your-bank-id> "
+                        "(see memory/adapters/hindsight/ADAPTER.md)"
+                    ),
+                }
+            )
+        )
+        sys.exit(2)
+
     try:
         from hindsight_client import Hindsight
     except ImportError as exc:
@@ -438,8 +450,8 @@ def main() -> None:
                 {
                     "ok": False,
                     "error": (
-                        f"hindsight_client not on path. "
-                        f"Install it in your Hermes Python environment. ({exc})"
+                        f"hindsight_client not installed. "
+                        f"Run: pip install 'hindsight-client>=0.4.22' ({exc})"
                     ),
                 }
             )

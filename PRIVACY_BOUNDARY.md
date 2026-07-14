@@ -31,12 +31,13 @@ The following directories and files are included in the public distribution:
 
 ## Optional Public Adapters
 
-These are documented but require external services:
+These ship and work when configured; they require external services:
 
 | Adapter | Config Required | Description |
 |---|---|---|
 | Pinecone | `PINECONE_API_KEY`, `PINECONE_INDEX` | Semantic vector search |
 | Neo4j | `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD` | Graph-based memory queries |
+| Hindsight | `HINDSIGHT_BANK`, optional `HINDSIGHT_API_URL` | Bank digests → ST memory + GC |
 
 ## Explicit Private Exclusions
 
@@ -47,10 +48,11 @@ The following are NEVER included in the public distribution:
 - **Credentials and secrets**: API keys, SSH keys, certificates, tokens
 - **Runtime state**: SQLite databases, caches, agent state, cron schedules
 - **Personal content**: notes, drafts, proposals, handoffs, memory history
-- **Owner-specific services**: Hindsight, private MCP servers, deployment configs
+- **Owner-specific services**: private MCP servers, deployment configs, private runtime bridges
 - **Production data**: market data, trading strategies, financial information
 - **Private skills**: workspace-specific skills not listed in registry
 - **Owner history**: session logs, stumble records, lesson history
+- **Private runtime paths**: e.g. `hermes-state/`, owner home paths, production service hostnames
 
 ## External Dependencies (MIT, not bundled)
 
@@ -87,9 +89,11 @@ The following patterns are always blocked:
 - `node_modules/`, `.venv/`, `__pycache__/`
 - `handoffs/`, `hermes-state/`, `state/`, `archive/`
 - `drafts/`, `proposals/`, `notes/`, `legacy/`
-- `droid-wiki/` (excluded from public artifact — Factory-generated documentation with internal references)
+- `droid-wiki/` (not tracked; gitignored — internal documentation with private references)
 - `droid-wiki-new/`
+- Private-stack memory bridge modules (never allowlisted; see EXPORT_MANIFEST denylist)
 - `hooks/`, `acp/`, `config/`, `specs/`, `config.env`
+- Runtime residue: `__pycache__/`, `*.pyc` (gitignored; must never be tracked)
 
 ## Release Scan Patterns
 

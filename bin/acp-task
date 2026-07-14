@@ -8,8 +8,8 @@
 #
 # Examples:
 #   acp-task executor home "Summarize today's logs"
-#   acp-task explorer project-b "Find the API endpoint" --wait
-#   acp-task code_reviewer project-a "Review auth flow" --body "Focus on SQL injection" --json
+#   acp-task explorer work "Find the API endpoint" --wait
+#   acp-task code_reviewer docs "Review auth flow" --body "Focus on SQL injection" --json
 #
 
 set -euo pipefail
@@ -33,7 +33,7 @@ SEND_SCRIPT="$AGENT_OS_HOME/.config/agent-workflows/acp/acp_send.py"
 COMPLETION_SCRIPT="$AGENT_OS_HOME/.config/agent-workflows/acp/acp_completion.py"
 
 VALID_ROLES=("executor" "explorer" "architect" "reviewer" "code_reviewer" "escalation" "hard_escalation")
-VALID_WORKSPACES=("home" "project-a" "project-b" "vault")
+VALID_WORKSPACES=("home" "work" "docs" "vault")
 
 # ── Color helpers ───────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
@@ -62,13 +62,14 @@ Options:
 
 Examples:
   acp-task executor home "Summarize today's logs"
-  acp-task explorer project-b "Find the API endpoint" --wait
-  acp-task code_reviewer project-a "Review auth flow" --json
+  acp-task explorer work "Find the API endpoint" --wait
+  acp-task code_reviewer docs "Review auth flow" --json
 EOF
-    exit 1
+    exit "${1:-1}"
 }
 
 # ── Parse args ──────────────────────────────────────────────────────────
+if [[ $# -eq 1 && "$1" == "--help" ]]; then usage 0; fi
 if [[ $# -lt 3 ]]; then usage; fi
 
 ROLE="$1"; shift
@@ -155,20 +156,26 @@ if $WAIT; then
         fi
 
         # Extract state
-        STATE=$(echo "$STATUS" | python3 -c "
-import sys, json
-if '--json' in ' '.join(sys.argv):
-    d = json.loads('$STATUS' if '$STATUS'.startswith('{') else '{}')
+        if $JSON; then
+            STATE=$(printf '%s\n' "$STATUS" | python3 -c '
+import json
+import sys
+try:
+    print(json.load(sys.stdin).get("state", "unknown"))
+except (json.JSONDecodeError, TypeError):
+    print("unknown")
+' 2>/dev/null || echo "unknown")
+        else
+            STATE=$(printf '%s\n' "$STATUS" | python3 -c '
+import sys
+for line in sys.stdin:
+    if line.startswith("State:"):
+        print(line.split(":", 1)[1].strip())
+        break
 else:
-    # Parse human output
-    for line in '''$STATUS'''.split('\n'):
-        if line.startswith('State:'):
-            d = {'state': line.split(':',1)[1].strip()}
-            break
-    else:
-        d = {'state': 'unknown'}
-print(d.get('state', 'unknown'))
-" 2>/dev/null || echo "unknown")
+    print("unknown")
+' 2>/dev/null || echo "unknown")
+        fi
 
         case "$STATE" in
             succeeded)

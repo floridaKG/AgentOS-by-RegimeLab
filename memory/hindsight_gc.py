@@ -1,24 +1,16 @@
 #!/usr/bin/env python3
-"""hindsight_gc.py — lifecycle management for the Hindsight memory bank.
+"""hindsight_gc.py — lifecycle management for a Hindsight memory bank.
 
-DEFERRED FROM V1 OSS: This module requires the Hermes + Hindsight API stack,
-which is not part of the open-source Agent OS distribution. It is provided
-here for reference only.
+Optional adapter: report, export, rebuild, prune, and auto GC for Hindsight.
+Local Core lifecycle (stumble-triage / stumble-cleanup) does not need this.
 
-For local-core memory lifecycle management, use `stumble-triage` and
-`stumble-cleanup` which work with SQLite only.
+Configure via environment (see memory/adapters/hindsight/ADAPTER.md):
 
-Original docstring follows:
----
-Manages the Hindsight memory lifecycle: reporting stats, staleness probing,
-export backup, observation rebuild, and document pruning.
-
-Configure via environment:
-
+    AGENT_OS_HOME=/path/to/agent-os                         (required)
     HINDSIGHT_API_URL=http://127.0.0.1:9177               (default)
     HINDSIGHT_BANK=<your-bank-id>                           (required)
-    HINDSIGHT_GC_ARCHIVE_DIR=/path/to/archive               (default: $AGENT_OS_HOME/memory/archive/hindsight-gc)
-    AGENT_OS_HOME=/path/to/agent-os                         (required)
+    HINDSIGHT_LOG_DIR=~/.local/state/agent-os/hindsight     (default)
+    HINDSIGHT_GC_ARCHIVE_DIR=.../memory/archive/hindsight-gc (default)
 
 Modes:
   report   (default) — stats, staleness probes, age distribution
@@ -46,34 +38,37 @@ AGENT_OS_HOME = os.environ.get("AGENT_OS_HOME", "").strip()
 HINDSIGHT_API_URL = os.environ.get("HINDSIGHT_API_URL", "http://127.0.0.1:9177")
 HINDSIGHT_BANK = os.environ.get("HINDSIGHT_BANK", "").strip()
 
-if not AGENT_OS_HOME:
-    print("FATAL: AGENT_OS_HOME environment variable must be set.", file=sys.stderr)
-    sys.exit(2)
-if not HINDSIGHT_BANK:
-    print("FATAL: HINDSIGHT_BANK environment variable must be set.", file=sys.stderr)
-    sys.exit(2)
-
 LIFECYCLE_DELETE_ENABLED = os.environ.get("LIFECYCLE_DELETE_ENABLED", "0") == "1"
 AUTO_STALE_THRESHOLD = int(os.environ.get("GC_AUTO_STALE_THRESHOLD", "10"))
 
-LOG_DIR = Path(os.environ.get("HINDSIGHT_LOG_DIR", str(Path.home() / ".hermes/logs/memory")))
-LOG_DIR.mkdir(parents=True, exist_ok=True)
-
-logging.basicConfig(
-    filename=str(LOG_DIR / "gc-auto.log"),
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s",
-)
-auto_logger = logging.getLogger("hindsight-gc-auto")
+_DEFAULT_STATE = Path.home() / ".local" / "state" / "agent-os" / "hindsight"
+LOG_DIR = Path(os.environ.get("HINDSIGHT_LOG_DIR", str(_DEFAULT_STATE)))
 
 API = HINDSIGHT_API_URL
 BANK = HINDSIGHT_BANK
 ARCHIVE_DIR = Path(
     os.environ.get(
         "HINDSIGHT_GC_ARCHIVE_DIR",
-        f"{AGENT_OS_HOME}/memory/archive/hindsight-gc",
+        (
+            f"{AGENT_OS_HOME}/memory/archive/hindsight-gc"
+            if AGENT_OS_HOME
+            else str(_DEFAULT_STATE / "archive")
+        ),
     )
 )
+
+
+def _ensure_logging() -> logging.Logger:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    logging.basicConfig(
+        filename=str(LOG_DIR / "gc-auto.log"),
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+    )
+    return logging.getLogger("hindsight-gc-auto")
+
+
+auto_logger = logging.getLogger("hindsight-gc-auto")
 
 # Staleness probes — customize these for your own known-false claims.
 # If recall surfaces any of these markers, the bank needs a rebuild.
@@ -390,6 +385,23 @@ def main():
     p_auto = sub.add_parser("auto", help="automated GC")
     p_auto.add_argument("--threshold", type=int, default=None)
     args = ap.parse_args()
+
+    if not AGENT_OS_HOME:
+        print("FATAL: AGENT_OS_HOME is not set. source ~/.config/agent-os/config.env", file=sys.stderr)
+        return 2
+    if not HINDSIGHT_BANK:
+        print(
+            "FATAL: HINDSIGHT_BANK is not set. "
+            "export HINDSIGHT_BANK=<your-bank-id> "
+            "(see memory/adapters/hindsight/ADAPTER.md)",
+            file=sys.stderr,
+        )
+        return 2
+
+    global BANK, auto_logger
+    BANK = HINDSIGHT_BANK
+    auto_logger = _ensure_logging()
+
     cmd = args.cmd or "report"
     if cmd == "report":
         return cmd_report(args)

@@ -71,7 +71,7 @@ tools:
   - id: memory-st
     binary: $AGENT_OS_HOME/bin/memory-st
     purpose: Short-term memory operations (write, query, list)
-    invocation: memory-st write --intent LESSON --summary "..." --source-ref cli:...
+    invocation: memory-st write --run-id <run-id> --agent-id <agent-id> --workspace <workspace> --intent LESSON --kind observation --summary "..." --content-file <content-file> --source-ref cli:...
 
   - id: memory-lt
     binary: $AGENT_OS_HOME/bin/memory-lt
@@ -81,7 +81,7 @@ tools:
   - id: memory-recall
     binary: $AGENT_OS_HOME/bin/memory-recall
     purpose: Cross-tier memory search
-    invocation: memory-recall "<query>"
+    invocation: memory-recall --text "<query>"
 
   - id: memory-recall-safe
     binary: $AGENT_OS_HOME/bin/memory-recall-safe
@@ -96,7 +96,27 @@ tools:
   - id: memory-promote
     binary: $AGENT_OS_HOME/bin/memory-promote
     purpose: Promote short-term records to long-term storage
-    invocation: memory-promote --id <record-id> --target auto
+    invocation: memory-promote --target graph --short-term-id <record-id> --reason "<reason>"
+
+  - id: acp-task
+    binary: $AGENT_OS_HOME/bin/acp-task
+    purpose: Enqueue a task for a configured ACP role and workspace
+    invocation: acp-task <role> <workspace> "<objective>" [--wait|--json]
+
+  - id: hindsight-bridge
+    binary: $AGENT_OS_HOME/bin/hindsight-bridge
+    purpose: Export Hindsight bank digests into Agent OS short-term memory (optional)
+    invocation: hindsight-bridge --dry-run --limit 20
+
+  - id: hindsight-gc
+    binary: $AGENT_OS_HOME/bin/hindsight-gc
+    purpose: Hindsight bank lifecycle (report/export/rebuild/prune/auto)
+    invocation: hindsight-gc report
+
+  - id: hindsight-health
+    binary: $AGENT_OS_HOME/bin/hindsight-health
+    purpose: Verify Hindsight client, API, and bank configuration
+    invocation: hindsight-health
 
   - id: agent-voice
     binary: $AGENT_OS_HOME/bin/agent-voice

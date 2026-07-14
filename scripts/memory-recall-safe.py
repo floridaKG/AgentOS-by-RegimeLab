@@ -422,7 +422,7 @@ def main():
                              "semantic tier (brain,memory,legacy_no_provenance). "
                              "Scopes which provenance tiers may surface.")
     parser.add_argument("--scope", default=None,
-                        choices=["home", "project-a", "project-b", "vault"],
+                        choices=["home", "work", "docs", "vault"],
                         help="Restrict the semantic tier to a workspace scope.")
     parser.add_argument(
         "--canonical-name", default="memory-recall-safe",

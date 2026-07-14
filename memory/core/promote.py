@@ -42,6 +42,17 @@ _AOH = os.environ.get("AGENT_OS_HOME") or os.path.dirname(os.path.dirname(os.pat
 # Subcommand routing: known subcommands that supersede the legacy flat CLI.
 SUBCOMMANDS = {"propose", "approve", "reject", "apply", "rollback", "sweep-stale"}
 
+# ── Secure temp directory (AGENTS.md: No Temp Writes) ──────────────────────
+# Use $AGENT_OS_HOME/.local/state/tmp for all temporary files instead of /tmp.
+_SECURE_TMP_DIR = os.path.join(_AOH, ".local", "state", "tmp")
+
+
+def _ensure_secure_tmp_dir():
+    """Create and return the secure temp directory for promotion files."""
+    os.makedirs(_SECURE_TMP_DIR, exist_ok=True)
+    return _SECURE_TMP_DIR
+
+
 # ── Security helpers ───────────────────────────────────────────────────────
 
 # Allowed source roots for promotion
@@ -79,7 +90,7 @@ def _secure_record_file(record, prefix=""):
     The file is automatically removed when the context exits.
     Yields the path to the temporary file.
     """
-    fd, path = tempfile.mkstemp(prefix=prefix, suffix=".json")
+    fd, path = tempfile.mkstemp(prefix=prefix, suffix=".json", dir=_ensure_secure_tmp_dir())
     try:
         # Set secure permissions
         os.chmod(path, 0o600)
@@ -521,7 +532,8 @@ def _promote_graph_record(short_term_id, reason, mark_state=False):
         "valid_from": _now_iso(),
     }
 
-    tmp_path = f"/tmp/promote_graph_{short_term_id}.json"
+    _ensure_secure_tmp_dir()
+    tmp_path = os.path.join(_SECURE_TMP_DIR, f"promote_graph_{short_term_id}.json")
     with open(tmp_path, "w") as f:
         json.dump(graph_payload, f)
 
@@ -651,8 +663,9 @@ def cmd_promote_vector(source_path, namespace, scope, promoted_by):
     }
 
     # 4. Write Pinecone record to deterministic temp path and call memory-lt upsert-vector
-    # Use deterministic path under /tmp — cleanup is the orchestrator's job.
-    tmp_path = f"/tmp/promote_vector_{record_id}.json"
+    # Use deterministic path under secure state dir — cleanup is the orchestrator's job.
+    _ensure_secure_tmp_dir()
+    tmp_path = os.path.join(_SECURE_TMP_DIR, f"promote_vector_{record_id}.json")
     with open(tmp_path, "w") as f:
         json.dump(record, f)
 
@@ -903,7 +916,8 @@ def _build_vector_record(row, namespace):
 
 def _upsert_one(record, namespace):
     """Write record JSON and call memory-lt upsert-vector. Returns (ok, payload)."""
-    tmp_path = f"/tmp/promote_stvec_{record['_id'].replace('::', '__')}.json"
+    _ensure_secure_tmp_dir()
+    tmp_path = os.path.join(_SECURE_TMP_DIR, f"promote_stvec_{record['_id'].replace('::', '__')}.json")
     with open(tmp_path, "w") as f:
         json.dump(record, f)
     rc, stdout, stderr = _run_cli([
@@ -912,7 +926,7 @@ def _upsert_one(record, namespace):
         "--json-file", tmp_path,
     ])
     try:
-        archive_dir = "/tmp/agent-os-promote/archive"
+        archive_dir = os.path.join(_SECURE_TMP_DIR, "agent-os-promote", "archive")
         os.makedirs(archive_dir, exist_ok=True)
         archived = os.path.join(
             archive_dir,
