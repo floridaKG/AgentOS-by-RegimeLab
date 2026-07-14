@@ -128,6 +128,18 @@ JSON errors and local SQLite memory continues to work.
 
 ## Memory Injection and Hooks
 
+### Manual recall (always available)
+
+The simplest way to query shared memory is `recall` or direct FTS5 search.
+No configuration needed — works immediately after install:
+
+```bash
+recall "how do we handle token refresh errors"
+memory-st query --text "auth token refresh" --limit 5
+```
+
+### Packet-based injection
+
 Use `memory-inject` when you have a task packet and want a scoped
 `memory_context` JSON payload:
 
@@ -136,15 +148,88 @@ memory-inject --packet packet.json --token-budget 1000 --dry-run
 memory-inject --packet packet.json --token-budget 1000 --out memory_context.json
 ```
 
-The recall hook is available at `memory/core/recall_hook.py`. Agent wrappers can
-call it before a prompt is sent:
+### Auto-injection via recall hook (requires one-time agent setup)
 
-```bash
-python3 $AGENT_OS_HOME/memory/core/recall_hook.py --agent codex < prompt.txt
+The recall hook (`memory/core/recall_hook.py`) injects relevant prior
+lessons before every prompt. It searches memory, filters by relevance,
+and returns a formatted `<agent_os_memory>` context block. The hook is
+fail-safe: on any error it prints nothing and exits 0 — it never blocks
+a prompt.
+
+**Supported agents:** Claude Code (`--agent cc`), Codex (`--agent codex`),
+Pi (`--agent pi`).
+
+**Kill switch:** Set `AGENT_OS_RECALL_HOOK_DISABLED=1` in your environment
+to disable the hook without removing the configuration.
+
+#### Claude Code setup
+
+Add a UserPromptSubmit hook to your Claude Code configuration. Create or
+edit `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "command": "python3 $AGENT_OS_HOME/memory/core/recall_hook.py --agent cc",
+        "timeout": 10000
+      }
+    ]
+  }
+}
 ```
 
+Replace `$AGENT_OS_HOME` with the actual path (Claude Code does not expand
+environment variables in hook command strings).
+
+Restart Claude Code. On the next prompt, the hook fires, searches memory,
+and injects relevant context. Verify it's working by checking the telemetry
+log:
+
+```bash
+tail -5 ~/.local/state/agent-os/logs/memory/recall-hook.jsonl
+```
+
+Each line records whether injection succeeded and how many results were
+injected.
+
+#### Codex setup
+
+Codex hooks use a different configuration path. Add to your Codex hook
+configuration (see Codex documentation for the exact file location):
+
+```json
+{
+  "onUserPromptSubmit": "python3 /absolute/path/to/agent-os/memory/core/recall_hook.py --agent codex"
+}
+```
+
+#### Verifying injection is working
+
+1. Write a test memory record:
+   ```bash
+   echo "This is a test lesson" > /tmp/test_lesson.txt
+   memory-st write --run-id test-001 --agent-id test --workspace test \
+     --intent LESSON --kind observation \
+     --summary "The login endpoint rate-limits after 5 failed attempts" \
+     --content-file /tmp/test_lesson.txt --source-ref test:verify
+   ```
+
+2. Run the hook manually:
+   ```bash
+   echo '{"prompt":"How does the login endpoint handle rate limiting?"}' | \
+     python3 $AGENT_OS_HOME/memory/core/recall_hook.py --agent cc
+   ```
+
+3. Look for `<agent_os_memory>` in the output. If present, injection is
+   working. If silent (no output), the golden-canary health gate hasn't
+   accumulated enough history yet — this is normal on first run. Try
+   again after a few real prompts.
+
 The hook reads local SQLite first and uses optional Pinecone/Neo4j tiers only
-when they are configured.
+when they are configured. Without optional backends, injection uses FTS5
+keyword matching — functional but less semantically rich.
 
 ## Agent Feedback
 

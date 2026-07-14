@@ -72,13 +72,17 @@ For multi-agent dispatch, install [ACPx](https://www.npmjs.com/package/acpx)
 ### Memory that accumulates
 
 A local SQLite store that agents write to and search. Lessons, stumbles, and
-decisions persist across sessions. Your agents start every task with relevant
-context injected automatically — no more cold starts.
+decisions persist across sessions. Agents query shared memory with `recall`
+before starting work — no more discovering the same edge case twice.
 
 ```bash
 recall "how do we handle token refresh errors"
 memory-st write --intent LESSON --summary "auth.py:142 fails silently during DB migrations"
 ```
+
+Optional auto-injection: the recall hook can inject relevant context before
+every prompt. Requires a one-time agent hook configuration. See
+[docs/MEMORY_USER_GUIDE.md](docs/MEMORY_USER_GUIDE.md) for setup.
 
 ### Multi-agent dispatch
 
