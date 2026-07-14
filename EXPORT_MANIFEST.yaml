@@ -232,6 +232,7 @@ allowlist:
       - AGENT_REPORT_CONVENTIONS.md
       - SYSTEM_ARCHITECTURE_SOURCE_OF_TRUTH.md
       - OPTIONAL_BACKENDS.md
+      - GETTING_STARTED.md
 
   # --- Tests (shipped for user verification) ---
   tests:

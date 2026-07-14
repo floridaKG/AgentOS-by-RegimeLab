@@ -3,8 +3,10 @@
 # Idempotent setup. Defaults to local-core memory profile (SQLite only).
 # Supports non-interactive test mode: AGENT_OS_TEST=1 ./install.sh
 # Optional flags:
-#   --with-rtk    Install RTK (Rust Token Killer) CLI proxy (requires curl)
-#   --no-path     Do not modify shell profile PATH
+#   --with-rtk       Install RTK (Rust Token Killer) CLI proxy (requires curl)
+#   --no-path        Do not modify shell profile PATH
+#   --setup-memory   Walk through optional memory backend setup interactively
+#   --quickstart     Seed demo memory records so recall returns results immediately
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,6 +20,7 @@ TEST_HOME="${AGENT_OS_TEST_HOME:-}"
 WITH_RTK=0
 NO_PATH=0
 WITH_SETUP_MEMORY=0
+WITH_QUICKSTART=0
 
 # Parse flags
 for arg in "$@"; do
@@ -25,19 +28,22 @@ for arg in "$@"; do
     --with-rtk) WITH_RTK=1 ;;
     --no-path) NO_PATH=1 ;;
     --setup-memory) WITH_SETUP_MEMORY=1 ;;
+    --quickstart) WITH_QUICKSTART=1 ;;
     --help|-h)
-      echo "Usage: ./install.sh [--with-rtk] [--no-path] [--setup-memory]"
+      echo "Usage: ./install.sh [--with-rtk] [--no-path] [--setup-memory] [--quickstart]"
       echo ""
       echo "  --with-rtk      Install RTK (Rust Token Killer) CLI proxy (requires curl)"
       echo "                 Advanced opt-in: runs a third-party install script over HTTPS."
       echo "  --no-path       Do not append \$AGENT_OS_HOME/bin to ~/.bashrc|~/.zshrc|~/.profile"
       echo "  --setup-memory  Walk through optional memory backend setup (Pinecone, Neo4j, Hindsight)"
       echo "                 Interactive: prompts for each backend, opens signup URLs, writes config."
+      echo "  --quickstart    Seed demo memory records so recall returns results immediately"
+      echo "                 Writes 5 realistic demo lessons for exploration."
       exit 0
       ;;
     *)
       echo "Unknown option: $arg"
-      echo "Usage: ./install.sh [--with-rtk] [--no-path] [--setup-memory]"
+      echo "Usage: ./install.sh [--with-rtk] [--no-path] [--setup-memory] [--quickstart]"
       exit 1
       ;;
   esac
@@ -488,6 +494,82 @@ else
   echo "    bash \$AGENT_OS_HOME/scripts/agent-os-health.sh"
 fi
 
+# ── Optional: Quickstart demo records ──
+echo ""
+echo "--- Optional: Quickstart demo records ---"
+if [ "$WITH_QUICKSTART" != "1" ]; then
+  echo "  Quickstart not requested."
+  echo "  To seed demo memory records for exploration:"
+  echo "    ./install.sh --quickstart"
+  echo "  Or see: docs/GETTING_STARTED.md"
+else
+  if [ "$TEST_MODE" = "1" ]; then
+    skip "Quickstart seeding (test mode — use docs/GETTING_STARTED.md)"
+  else
+    echo "  Seeding 5 demo memory records so recall returns results immediately..."
+    MEMORY_PY="$AGENT_OS_HOME/memory/core/short_term.py"
+    DEMO_DIR="${HOME}/.local/state/agent-os/memory"
+    mkdir -p "$DEMO_DIR"
+
+    # Seed records via Python to avoid shell escaping issues
+    python3 -c "
+import subprocess, sys, os
+agent_os_home = os.environ.get('AGENT_OS_HOME', '')
+mem_py = os.path.join(agent_os_home, 'memory', 'core', 'short_term.py')
+records = [
+    {
+        'summary': 'Login endpoint rate-limits at 5 failed attempts per IP, 15min cooldown',
+        'content': 'The /api/auth/login endpoint rate-limits after 5 consecutive failed attempts from the same IP address. The cooldown period is 15 minutes. Implementation is in src/middleware/rate_limiter.py, configured via RATE_LIMIT_MAX_ATTEMPTS and RATE_LIMIT_WINDOW_MINUTES env vars. The rate limit counter resets on successful login.',
+    },
+    {
+        'summary': 'Database migration lock prevents writes during schema changes',
+        'content': 'When running database migrations, the migration framework acquires an exclusive lock on the affected tables. During this lock window (typically 2-5 seconds), write operations fail with a \"database is locked\" error. The application must handle this gracefully: retry with exponential backoff or queue writes for replay. See the migration runner in src/db/migrate.py and the write queue in src/db/write_queue.py.',
+    },
+    {
+        'summary': 'Config reload requires SIGHUP, not restart — preserves in-flight requests',
+        'content': 'The application supports hot config reload via SIGHUP signal. Sending SIGHUP to the main process PID causes it to re-read config.env and apply changes without dropping active connections. This is preferred over restart because it preserves in-flight requests. The PID file is at /var/run/app.pid. See src/config/reloader.py for the signal handler implementation.',
+    },
+    {
+        'summary': 'Cache warming takes ~90 seconds on cold start, API returns 503 during warmup',
+        'content': 'On cold start (empty cache), the application spends approximately 90 seconds warming the Redis cache from the primary database. During this window, the health check endpoint returns 200 but the API endpoints return 503 Service Unavailable. Load balancers should be configured to check /api/ready (not /api/health) before routing traffic. The warmup progress can be monitored at /api/cache/status.',
+    },
+    {
+        'summary': 'Webhook signature verification fails if request body is read more than once',
+        'content': 'The webhook signature verification middleware reads the raw request body to compute the HMAC-SHA256 signature. If any upstream middleware or route handler also reads request.body, the verification will fail because the body stream is already consumed. The fix is to buffer the body in the verification middleware and attach it as request.rawBody for downstream consumers. See src/middleware/webhook_verify.py.',
+    },
+]
+for i, rec in enumerate(records):
+    content_file = f'/tmp/agent_os_quickstart_{i}.txt'
+    with open(content_file, 'w') as f:
+        f.write(rec['content'])
+    result = subprocess.run(
+        ['python3', mem_py, 'write',
+         '--run-id', f'quickstart-{i+1:03d}',
+         '--agent-id', 'demo',
+         '--workspace', 'demo',
+         '--intent', 'LESSON',
+         '--kind', 'observation',
+         '--summary', rec['summary'],
+         '--content-file', content_file,
+         '--source-ref', 'quickstart:demo'],
+        capture_output=True, text=True, timeout=15
+    )
+    if result.returncode == 0:
+        print(f'    Seeded record {i+1}/5: {rec[\"summary\"][:60]}...')
+    else:
+        print(f'    WARNING: record {i+1} failed: {result.stderr[:120]}')
+    os.unlink(content_file)
+" 2>&1
+
+    echo ""
+    echo "  Demo records seeded. Try it:"
+    echo "    source ~/.config/agent-os/config.env"
+    echo "    recall \"what happens during database migrations\""
+    echo ""
+    echo "  See docs/GETTING_STARTED.md for the full first-run walkthrough."
+  fi
+fi
+
 # ── Summary ──
 echo ""
 echo "=== Installation Summary ==="
@@ -504,9 +586,10 @@ echo ""
 echo "=== Next Steps ==="
 echo "1. Add your LLM API key to $SECRETS_FILE"
 echo "2. Source the config: source $CONFIG_FILE"
-echo "3. (Optional) Add bin/ to PATH: auto-configured in ~/.bashrc (or check shell profile)"
-echo "4. Verify: bash $AGENT_OS_HOME/scripts/agent-os-health.sh"
-echo "5. Read AGENTS.md to get started"
+echo "3. Read the getting started guide: docs/GETTING_STARTED.md"
+echo "4. (Optional) Seed demo records: ./install.sh --quickstart"
+echo "5. Add bin/ to PATH: auto-configured in ~/.bashrc (or check shell profile)"
+echo "6. Verify: bash $AGENT_OS_HOME/scripts/agent-os-health.sh"
 echo ""
 echo "=== Optional Setup ==="
 echo "  ACPx (agent launcher): npm install -g acpx"

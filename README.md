@@ -60,6 +60,11 @@ skill packs. Verify with:
 bash scripts/agent-os-health.sh
 ```
 
+**First time?** Read [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) for a
+10-minute walkthrough — every step produces visible output. Or run
+`./install.sh --quickstart` to seed demo memory records so `recall` returns
+results immediately.
+
 **Minimum requirements:** Python 3.10+, Git, Bash. Linux and WSL2 are tested.
 No Node.js, no hosted services, no API keys needed for the core.
 
@@ -167,6 +172,7 @@ Everything runs locally. Nothing phones home. Your API keys stay in your
 
 | Document | When to read it |
 |----------|----------------|
+| [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) | First 10 minutes — concrete walkthrough |
 | [SETUP.md](SETUP.md) | Full installation walkthrough with every option |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the components connect and the request flow |
 | [docs/OPTIONAL_BACKENDS.md](docs/OPTIONAL_BACKENDS.md) | Set up Pinecone, Neo4j, or Hindsight |
