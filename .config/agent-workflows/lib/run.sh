@@ -50,45 +50,28 @@ WF_ALLOWED_PATHS="${WF_ALLOWED_PATHS:-}"
 WF_DENIED_PATHS="${WF_DENIED_PATHS:-}"
 
 # Read chain entries for a role: prints each "provider:model" on its own line.
+# Uses Python tomllib (stdlib in 3.11+, same minimum as team binary) instead of
+# awk regex — awk silently fails on multi-line arrays, quoted values with special
+# characters, and nested TOML tables.
 _role_chain() {
     local role="$1"
-    # Prefer an explicit chain = [...] (legacy format).
-    local chain
-    chain=$(awk -v role="$role" '
-        $0 ~ "^\\["role"\\]" { in_role=1; next }
-        in_role && /^\[/ { in_role=0 }
-        in_role && /^chain/ { collecting=1 }
-        collecting {
-            if (match($0, /"[^"]+"/)) {
-                s = substr($0, RSTART+1, RLENGTH-2)
-                print s
-            }
-            if ($0 ~ /\]/) { collecting=0; in_role=0; exit }
-        }
-    ' "$ROLES_FILE")
-    if [ -n "$chain" ]; then
-        printf '%s\n' "$chain"
-        return 0
-    fi
-    # New format: synthesize provider:model from separate keys (matches roles.toml +
-    # acp_to_run_agent.sh). Without this every .sh workflow falls through to canned
-    # local output and never dispatches an agent.
-    local provider model
-    provider=$(awk -v role="$role" '
-        $0 ~ "^\\["role"\\]" { in_role=1; next }
-        in_role && /^\[/ { exit }
-        in_role && /^[[:space:]]*provider[[:space:]]*=/ {
-            v=$0; sub(/^[^=]*=[[:space:]]*/,"",v); gsub(/"/,"",v); print v; exit }
-    ' "$ROLES_FILE")
-    model=$(awk -v role="$role" '
-        $0 ~ "^\\["role"\\]" { in_role=1; next }
-        in_role && /^\[/ { exit }
-        in_role && /^[[:space:]]*model[[:space:]]*=/ {
-            v=$0; sub(/^[^=]*=[[:space:]]*/,"",v); gsub(/"/,"",v); print v; exit }
-    ' "$ROLES_FILE")
-    if [ -n "$provider" ] && [ -n "$model" ]; then
-        printf '%s:%s\n' "$provider" "$model"
-    fi
+    python3 -c '
+import sys
+try: import tomllib
+except ImportError: import tomli as tomllib
+with open(sys.argv[1], "rb") as f:
+    data = tomllib.load(f)
+section = data.get(sys.argv[2], {})
+chain = section.get("chain", [])
+if chain:
+    for entry in chain:
+        print(entry)
+else:
+    provider = section.get("provider", "")
+    model = section.get("model", "")
+    if provider and model:
+        print(f"{provider}:{model}")
+' "$ROLES_FILE" "$role"
 }
 
 # Strip ANSI escapes.

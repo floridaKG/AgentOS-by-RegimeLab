@@ -231,6 +231,7 @@ allowlist:
       - HANDOFF_AUTHORING_STANDARD.md
       - AGENT_REPORT_CONVENTIONS.md
       - SYSTEM_ARCHITECTURE_SOURCE_OF_TRUTH.md
+      - OPTIONAL_BACKENDS.md
 
   # --- Tests (shipped for user verification) ---
   tests:

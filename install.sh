@@ -17,23 +17,27 @@ TEST_MODE="${AGENT_OS_TEST:-0}"
 TEST_HOME="${AGENT_OS_TEST_HOME:-}"
 WITH_RTK=0
 NO_PATH=0
+WITH_SETUP_MEMORY=0
 
 # Parse flags
 for arg in "$@"; do
   case "$arg" in
     --with-rtk) WITH_RTK=1 ;;
     --no-path) NO_PATH=1 ;;
+    --setup-memory) WITH_SETUP_MEMORY=1 ;;
     --help|-h)
-      echo "Usage: ./install.sh [--with-rtk] [--no-path]"
+      echo "Usage: ./install.sh [--with-rtk] [--no-path] [--setup-memory]"
       echo ""
-      echo "  --with-rtk  Install RTK (Rust Token Killer) CLI proxy (requires curl)"
-      echo "             Advanced opt-in: runs a third-party install script over HTTPS."
-      echo "  --no-path   Do not append \$AGENT_OS_HOME/bin to ~/.bashrc|~/.zshrc|~/.profile"
+      echo "  --with-rtk      Install RTK (Rust Token Killer) CLI proxy (requires curl)"
+      echo "                 Advanced opt-in: runs a third-party install script over HTTPS."
+      echo "  --no-path       Do not append \$AGENT_OS_HOME/bin to ~/.bashrc|~/.zshrc|~/.profile"
+      echo "  --setup-memory  Walk through optional memory backend setup (Pinecone, Neo4j, Hindsight)"
+      echo "                 Interactive: prompts for each backend, opens signup URLs, writes config."
       exit 0
       ;;
     *)
       echo "Unknown option: $arg"
-      echo "Usage: ./install.sh [--with-rtk] [--no-path]"
+      echo "Usage: ./install.sh [--with-rtk] [--no-path] [--setup-memory]"
       exit 1
       ;;
   esac
@@ -317,6 +321,173 @@ else
   fi
 fi
 
+# ── Optional: Memory backends (Pinecone, Neo4j, Hindsight) ──
+echo ""
+echo "--- Optional: Memory backends ---"
+if [ "$WITH_SETUP_MEMORY" != "1" ]; then
+  echo "  Memory backend setup not requested."
+  echo "  To walk through Pinecone / Neo4j / Hindsight setup interactively:"
+  echo "    ./install.sh --setup-memory"
+  echo "  Or follow the guided doc: docs/OPTIONAL_BACKENDS.md"
+else
+  echo "  Interactive memory backend setup."
+  echo "  You can skip any backend by answering 'n' when prompted."
+  echo "  See docs/OPTIONAL_BACKENDS.md for manual setup instructions."
+  echo ""
+
+  # ── Pinecone ──
+  echo "  ── Pinecone (semantic search) ──"
+  if [ "$TEST_MODE" = "1" ]; then
+    skip "Pinecone setup (test mode — use docs/OPTIONAL_BACKENDS.md)"
+  else
+    read -r -p "  Set up Pinecone semantic memory? [y/N] " PINE_ANS
+    if [ "$PINE_ANS" = "y" ] || [ "$PINE_ANS" = "Y" ]; then
+      echo ""
+      echo "  Pinecone provides semantic vector search across sessions."
+      echo "  You need a free Pinecone account (pinecone.io) and an API key."
+      echo ""
+      echo "  Step 1: Open https://www.pinecone.io/ in your browser."
+      echo "          Sign up, then create an index with these settings:"
+      echo "            Name: agent-vault"
+      echo "            Dimensions: 1024"
+      echo "            Metric: cosine"
+      echo "            Pod type: Starter (free)"
+      echo ""
+      echo "  Step 2: Go to API Keys in the dashboard and copy your key."
+      echo "          Keys start with 'pcsk_' or 'pcu_'."
+      echo ""
+      read -r -p "  Paste your Pinecone API key (or press Enter to skip): " PINE_KEY
+      if [ -n "$PINE_KEY" ]; then
+        read -r -p "  Index name [agent-vault]: " PINE_INDEX
+        PINE_INDEX="${PINE_INDEX:-agent-vault}"
+        # Update config.env — replace placeholder or append
+        if grep -q "^# export PINECONE_API_KEY=" "$CONFIG_FILE" 2>/dev/null; then
+          sed -i "s|^# export PINECONE_API_KEY=.*|export PINECONE_API_KEY=\"$PINE_KEY\"|" "$CONFIG_FILE"
+          sed -i "s|^# export PINECONE_INDEX=.*|export PINECONE_INDEX=\"$PINE_INDEX\"|" "$CONFIG_FILE"
+        elif ! grep -q "^export PINECONE_API_KEY=" "$CONFIG_FILE" 2>/dev/null; then
+          {
+            echo ""
+            echo "# Pinecone semantic memory"
+            echo "export PINECONE_API_KEY=\"$PINE_KEY\""
+            echo "export PINECONE_INDEX=\"$PINE_INDEX\""
+          } >> "$CONFIG_FILE"
+        else
+          echo "  Pinecone already configured in $CONFIG_FILE — skipping"
+        fi
+        pass "Pinecone configured (index: $PINE_INDEX)"
+      else
+        skip "Pinecone setup skipped (no key provided)"
+      fi
+    else
+      skip "Pinecone setup skipped"
+    fi
+  fi
+
+  echo ""
+
+  # ── Neo4j ──
+  echo "  ── Neo4j (graph memory) ──"
+  if [ "$TEST_MODE" = "1" ]; then
+    skip "Neo4j setup (test mode — use docs/OPTIONAL_BACKENDS.md)"
+  else
+    read -r -p "  Set up Neo4j graph memory? [y/N] " NEO_ANS
+    if [ "$NEO_ANS" = "y" ] || [ "$NEO_ANS" = "Y" ]; then
+      echo ""
+      echo "  Neo4j provides relationship-based graph memory queries."
+      echo "  You need a free Neo4j AuraDB instance (neo4j.com)."
+      echo ""
+      echo "  Step 1: Open https://neo4j.com/cloud/platform/aura-graph-database/"
+      echo "          in your browser. Click 'Start Free' and create an account."
+      echo "          Then create a free AuraDB instance (any name, any region)."
+      echo "          IMPORTANT: Save the generated password — it's shown only once."
+      echo ""
+      echo "  Step 2: From the Aura console, copy your connection URI."
+      echo "          It looks like: neo4j+s://abc123.databases.neo4j.io"
+      echo ""
+      read -r -p "  Paste your Neo4j connection URI (or press Enter to skip): " NEO_URI
+      if [ -n "$NEO_URI" ]; then
+        read -r -p "  Username [neo4j]: " NEO_USER
+        NEO_USER="${NEO_USER:-neo4j}"
+        read -r -p "  Password: " NEO_PASS
+        if [ -n "$NEO_PASS" ]; then
+          if grep -q "^# export NEO4J_URI=" "$CONFIG_FILE" 2>/dev/null; then
+            sed -i "s|^# export NEO4J_URI=.*|export NEO4J_URI=\"$NEO_URI\"|" "$CONFIG_FILE"
+            sed -i "s|^# export NEO4J_USER=.*|export NEO4J_USER=\"$NEO_USER\"|" "$CONFIG_FILE"
+            sed -i "s|^# export NEO4J_PASSWORD=.*|export NEO4J_PASSWORD=\"$NEO_PASS\"|" "$CONFIG_FILE"
+          elif ! grep -q "^export NEO4J_URI=" "$CONFIG_FILE" 2>/dev/null; then
+            {
+              echo ""
+              echo "# Neo4j graph memory"
+              echo "export NEO4J_URI=\"$NEO_URI\""
+              echo "export NEO4J_USER=\"$NEO_USER\""
+              echo "export NEO4J_PASSWORD=\"$NEO_PASS\""
+            } >> "$CONFIG_FILE"
+          else
+            echo "  Neo4j already configured in $CONFIG_FILE — skipping"
+          fi
+          pass "Neo4j configured ($NEO_URI)"
+        else
+          skip "Neo4j setup skipped (no password provided)"
+        fi
+      else
+        skip "Neo4j setup skipped (no URI provided)"
+      fi
+    else
+      skip "Neo4j setup skipped"
+    fi
+  fi
+
+  echo ""
+
+  # ── Hindsight ──
+  echo "  ── Hindsight (cross-agent memory sharing) ──"
+  if [ "$TEST_MODE" = "1" ]; then
+    skip "Hindsight setup (test mode — use docs/OPTIONAL_BACKENDS.md)"
+  else
+    read -r -p "  Set up Hindsight cross-agent memory? [y/N] " HIND_ANS
+    if [ "$HIND_ANS" = "y" ] || [ "$HIND_ANS" = "Y" ]; then
+      echo ""
+      echo "  Hindsight enables cross-agent memory sharing via a shared bank."
+      echo "  Requires: pip install 'hindsight-client>=0.4.22'"
+      echo "            A running Hindsight API (hindsight serve &)"
+      echo ""
+      echo "  See docs/OPTIONAL_BACKENDS.md for the full setup walkthrough."
+      echo "  Quick start: pip install 'hindsight-client>=0.4.22'"
+      echo "               hindsight serve &  # starts API on http://127.0.0.1:9177"
+      echo ""
+      read -r -p "  Paste your Hindsight API URL [http://127.0.0.1:9177]: " HIND_URL
+      HIND_URL="${HIND_URL:-http://127.0.0.1:9177}"
+      read -r -p "  Bank ID [agent-os-shared]: " HIND_BANK
+      HIND_BANK="${HIND_BANK:-agent-os-shared}"
+      read -r -p "  Profile label [default]: " HIND_PROFILE
+      HIND_PROFILE="${HIND_PROFILE:-default}"
+
+      if grep -q "^# export HINDSIGHT_API_URL=" "$CONFIG_FILE" 2>/dev/null; then
+        sed -i "s|^# export HINDSIGHT_API_URL=.*|export HINDSIGHT_API_URL=\"$HIND_URL\"|" "$CONFIG_FILE"
+        sed -i "s|^# export HINDSIGHT_BANK=.*|export HINDSIGHT_BANK=\"$HIND_BANK\"|" "$CONFIG_FILE"
+        sed -i "s|^# export HINDSIGHT_PROFILE=.*|export HINDSIGHT_PROFILE=\"$HIND_PROFILE\"|" "$CONFIG_FILE"
+      elif ! grep -q "^export HINDSIGHT_API_URL=" "$CONFIG_FILE" 2>/dev/null; then
+        {
+          echo ""
+          echo "# Hindsight cross-agent memory sharing"
+          echo "export HINDSIGHT_API_URL=\"$HIND_URL\""
+          echo "export HINDSIGHT_BANK=\"$HIND_BANK\""
+          echo "export HINDSIGHT_PROFILE=\"$HIND_PROFILE\""
+        } >> "$CONFIG_FILE"
+      else
+        echo "  Hindsight already configured in $CONFIG_FILE — skipping"
+      fi
+      pass "Hindsight configured (bank: $HIND_BANK)"
+    else
+      skip "Hindsight setup skipped"
+    fi
+  fi
+  echo ""
+  echo "  To verify your backends after setup:"
+  echo "    source ~/.config/agent-os/config.env"
+  echo "    bash \$AGENT_OS_HOME/scripts/agent-os-health.sh"
+fi
+
 # ── Summary ──
 echo ""
 echo "=== Installation Summary ==="
@@ -324,6 +495,9 @@ echo "  AGENT_OS_HOME: $AGENT_OS_HOME"
 echo "  Config: $CONFIG_FILE"
 echo "  Secrets: $SECRETS_FILE"
 echo "  Memory profile: local-core (SQLite only)"
+if [ "$WITH_SETUP_MEMORY" = "1" ]; then
+  echo "  Memory backends: interactive setup completed (see docs/OPTIONAL_BACKENDS.md)"
+fi
 echo "  CLI facades: bin/ ($(ls "$AGENT_OS_HOME/bin/" 2>/dev/null | wc -l) commands)"
 
 echo ""
@@ -338,6 +512,8 @@ echo "=== Optional Setup ==="
 echo "  ACPx (agent launcher): npm install -g acpx"
 echo "    Without ACPx, ACP dispatch runs in dry-run mode (records what would run)."
 echo "    Requires Node.js 18+: https://nodejs.org/"
+echo "  Memory backends:       ./install.sh --setup-memory"
+echo "    Guided:              docs/OPTIONAL_BACKENDS.md"
 echo "  RTK (token savings):   re-run with: ./install.sh --with-rtk"
 echo "  Knowledge vault:       bash scripts/init-vault.sh --create ~/my-vault"
 echo "  SuperDocs:             bash scripts/init-superdocs.sh --project my-project"
