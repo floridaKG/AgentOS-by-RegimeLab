@@ -59,7 +59,7 @@ Add these two lines to `~/.config/agent-os/config.env` (uncomment the
 existing placeholders):
 
 ```bash
-export PINECONE_API_KEY="pcsk_your_key_here"
+export PINECONE_API_KEY="<your-pinecone-api-key>"
 export PINECONE_INDEX="agent-vault"
 ```
 
@@ -304,10 +304,10 @@ The full-stack memory profile:
 # ~/.config/agent-os/config.env
 export AGENT_OS_HOME="$HOME/agent-os"
 export LLM_PROVIDER="openai"
-export LLM_API_KEY="your-api-key"
+export LLM_API_KEY="<your-api-key>"
 
 # Pinecone — semantic search
-export PINECONE_API_KEY="pcsk_your_key"
+export PINECONE_API_KEY="<your-pinecone-api-key>"
 export PINECONE_INDEX="agent-vault"
 
 # Neo4j — graph relationships
