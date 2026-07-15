@@ -53,6 +53,7 @@ SAFE_PATH_PREFIXES = (
     b"SECURITY.md",
     b"droid-wiki/",
     b".github/workflows/",  # CI may set OWNER_USERNAME for scans
+    b"bin/rtk",  # pre-built Rust binary — embedded Rust crate paths (/home/runner/.cargo/…) and public project emails are toolchain artifacts, not leaks
 )
 
 # Generic/example usernames that appear in documentation and test patterns.
