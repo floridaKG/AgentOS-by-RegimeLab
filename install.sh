@@ -235,7 +235,7 @@ fi
 # ── Verify bin facades ──
 echo ""
 echo "--- Verifying CLI facades ---"
-for cmd in memory-st memory-lt memory-recall memory-recall-safe memory-inject memory-promote agent-voice team agent-workflow hindsight-bridge hindsight-gc hindsight-health; do
+for cmd in memory-st memory-lt memory-recall memory-recall-safe memory-inject memory-promote agent-voice team agent-workflow hindsight-bridge hindsight-gc hindsight-health rtk; do
   if [ -f "$AGENT_OS_HOME/bin/$cmd" ]; then
     chmod +x "$AGENT_OS_HOME/bin/$cmd" 2>/dev/null || true
     pass "bin/$cmd"
@@ -306,18 +306,23 @@ if [ "$WITH_RTK" != "1" ]; then
   echo "  RTK is a CLI proxy that reduces LLM token consumption by filtering"
   echo "  command outputs before they reach your AI agent."
   echo "  (Apache 2.0 — github.com/rtk-ai/rtk — external project, not Agent OS)"
-  echo "  Requires: curl"
-  echo "  Security: --with-rtk downloads and runs a third-party install script over HTTPS."
-  echo "  Review upstream before use in locked-down environments."
+  echo ""
+  echo "  Note: Agent OS bundles a pre-built RTK binary at \$AGENT_OS_HOME/bin/rtk."
+  echo "  This avoids the third-party download. The binary is from the upstream"
+  echo "  RTK project (github.com/rtk-ai/rtk) redistributed under Apache 2.0."
 elif [ "$TEST_MODE" = "1" ]; then
   skip "RTK installation (test mode)"
-elif ! command -v curl >/dev/null 2>&1; then
-  fail "RTK installation requires curl (not found). Install: apt install curl / brew install curl"
+elif [ -f "$AGENT_OS_HOME/bin/rtk" ]; then
+  # Bundled binary — install to user PATH
+  mkdir -p "${HOME}/.local/bin"
+  cp "$AGENT_OS_HOME/bin/rtk" "${HOME}/.local/bin/rtk"
+  chmod +x "${HOME}/.local/bin/rtk"
+  pass "RTK installed from bundled binary: $(rtk --version 2>&1)"
 elif command -v rtk >/dev/null 2>&1; then
   pass "RTK already installed: $(rtk --version 2>&1)"
-else
-  echo "  SECURITY NOTICE: About to download and execute the official RTK install"
-  echo "  script from https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh"
+elif command -v curl >/dev/null 2>&1; then
+  echo "  Bundled binary not found — falling back to download from"
+  echo "  https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh"
   echo "  This is a third-party supply-chain step (not audited by Agent OS)."
   echo "  Installing RTK from github.com/rtk-ai/rtk..."
   if curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | sh; then
@@ -325,6 +330,9 @@ else
   else
     echo "  WARNING: RTK installation failed (non-fatal — continuing without it)"
   fi
+else
+  echo "  WARNING: curl not found — cannot install RTK. Install curl or copy"
+  echo "  \$AGENT_OS_HOME/bin/rtk manually to a directory in your PATH."
 fi
 
 # ── Optional: Memory backends (Pinecone, Neo4j, Hindsight) ──

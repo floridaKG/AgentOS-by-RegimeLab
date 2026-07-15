@@ -43,17 +43,9 @@ acpx_dispatch() {
     local agent=""
 
     # ── Provider → agent mapping ──────────────────────────────────────────
-    # Provider-to-agent mapping: opencode|codex|claude.
-    # Any other provider returns exit 2 so the caller can use another adapter.
-    case "$provider" in
-        opencode) agent="opencode" ;;
-        codex)    agent="codex" ;;
-        claude)   agent="claude" ;;
-        *)
-            # Not an acpx agent — return 2 per spec contract
-            return 2
-            ;;
-    esac
+    agent=$(_acpx_agent_for_provider "$provider") || return 2
+
+    echo "ACP_ADAPTER: calling acpx $agent exec (provider=$provider, requested_model=${model:-default})" >&2
 
     # ── Build base acpx args ──────────────────────────────────────────────
     # Both paths pass --format json --approve-all. Ported from PATH A ~line 127,
@@ -66,7 +58,8 @@ acpx_dispatch() {
     #   The probe validates the model is advertised, falls back to agent default
     #   on mismatch, logs warnings for operator awareness.
     # pi: --model only for opencode-go/* session model ids.
-    #   Ported from PATH A ~line 127-130, PATH B ~line 107-110 — symmetric.
+    # omp: startup model is passed through OMP_ACP_MODEL; its native ACP
+    # server lacks session/set_model, so the wrapper applies it before spawn.
     # opencode: config-only, no --model flag.
     # model_to_apply = the validated model id (empty → use agent default).
     # HOW it is applied depends on session vs one-shot (see invocation below):
@@ -78,7 +71,7 @@ acpx_dispatch() {
     local model_to_apply=""
     if [ -n "$model" ]; then
         case "$provider" in
-            claude|codex|cline)
+            claude|codex|cline|droid|grok)
                 # Catalog probe: validate model is advertised before applying it.
                 # acpx emits the catalog as JSON ("availableModels":[{"modelId":...}]),
                 # NOT "Available models:" — parse modelId entries (fixed 2026-06-17;
@@ -86,20 +79,35 @@ acpx_dispatch() {
                 local advertised
                 advertised=$(timeout 45 acpx --model __probe__ "$agent" exec "probe" 2>&1 || true)
                 if ! printf '%s' "$advertised" | grep -qE 'availableModels|"modelId"'; then
+                    if [ "${ACPX_STRICT_MODEL:-0}" = "1" ]; then
+                        echo "acpx_dispatch: ERROR model probe inconclusive for $agent; refusing unverified model '$model'" >&2
+                        return 1
+                    fi
                     echo "acpx_dispatch: model probe inconclusive for $agent; applying '$model' best-effort" >&2
                     model_to_apply="$model"
-                elif printf '%s' "$advertised" | grep -qE "\"modelId\"[[:space:]]*:[[:space:]]*\"${model}\""; then
+                elif printf '%s' "$advertised" | grep -qF "\"modelId\":\"${model}\""; then
                     model_to_apply="$model"
                 else
-                    echo "acpx_dispatch: WARN model '$model' not advertised by $agent; using agent default. Run capability-check." >&2
+                    echo "acpx_dispatch: ERROR model '$model' not advertised by $agent; refusing silent default substitution" >&2
+                    return 1
                 fi
                 ;;
             pi)
-                # Pi: model only meaningful for opencode-go/* session model ids
-                # Ported from PATH A ~line 127-130, PATH B ~line 107-110
-                if [[ "$model" == opencode-go/* ]]; then
+                # Pi accepts provider-qualified ACP model ids for every
+                # configured provider. Bare ids are ambiguous and must fail
+                # instead of silently running Pi's default model.
+                if [[ "$model" == */* ]]; then
                     model_to_apply="$model"
+                else
+                    echo "acpx_dispatch: ERROR Pi model '$model' is not provider-qualified; use provider/model" >&2
+                    return 1
                 fi
+                ;;
+            omp)
+                # omp-acp-wrapper consumes this at child-process startup. Do
+                # not pass --model to acpx: OMP's native server does not expose
+                # the generic ACP model extension.
+                model_to_apply="$model"
                 ;;
             # opencode: config-only, no model flag
         esac
@@ -118,14 +126,14 @@ acpx_dispatch() {
         acpx "$agent" sessions show "$session_name" >/dev/null 2>&1 || \
             acpx "$agent" sessions new --name "$session_name" >/dev/null 2>&1
         # Apply the model to the session itself (NOT via --model — see note above).
-        if [ -n "$model_to_apply" ]; then
+        if [ -n "$model_to_apply" ] && [ "$provider" != "omp" ]; then
             acpx "$agent" set model "$model_to_apply" -s "$session_name" >/dev/null 2>&1 \
                 || echo "acpx_dispatch: WARN could not set model '$model_to_apply' on session '$session_name'" >&2
         fi
         args+=("$agent" "prompt" "-s" "$session_name")
     else
         # One-shot: the global --model flag works with exec.
-        [ -n "$model_to_apply" ] && args=(--model "$model_to_apply" "${args[@]}")
+        [ -n "$model_to_apply" ] && [ "$provider" != "omp" ] && args=(--model "$model_to_apply" "${args[@]}")
         args+=("$agent" "exec")
     fi
     args+=(-f "$prompt_file")
@@ -154,7 +162,7 @@ acpx_dispatch() {
             # AI_AGENT export for codegraph/rtk tool attribution wrappers.
             # Both paths export this before the acpx call.
             # Ported from PATH A ~line 155, PATH B ~line 117.
-            AI_AGENT="$agent" timeout -k 30 "$timeout_s" \
+            OMP_ACP_MODEL="${model_to_apply:-}" AI_AGENT="$agent" timeout -k 30 "$timeout_s" \
                 acpx "${args[@]}" > "$raw_ndjson" 2>"${raw_out}.err"
         ) 9>"$lock_dir/opencode.lock" || acpx_rc=$?
 
@@ -317,6 +325,13 @@ for line in sys.stdin:
     # Propagate acpx's real exit code (124 timeout / 137 SIGKILL / acpx errors)
     # so PATH A's timeout checks + classifier see the truth. 0 = success.
     return "$acpx_rc"
+}
+
+_acpx_agent_for_provider() {
+    case "$1" in
+        opencode|codex|claude|droid|pi|omp|cursor|cline|grok) printf '%s\n' "$1" ;;
+        *) return 2 ;;
+    esac
 }
 
 # ── acpx_timeout_for_role ────────────────────────────────────────────────────

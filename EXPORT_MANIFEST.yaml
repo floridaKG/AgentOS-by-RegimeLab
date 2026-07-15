@@ -60,6 +60,7 @@ allowlist:
       - hindsight-bridge
       - hindsight-gc
       - hindsight-health
+      - rtk
 
   # --- ACP config (agent-workflows configuration) ---
   bin_acp_config:
@@ -83,6 +84,16 @@ allowlist:
       - dialogue.sh
       - redteam.sh
       - load-roles.sh
+
+  # --- ACP core library (inter-agent protocol) ---
+  acp_core:
+    source: $AGENT_OS_HOME/acp
+    files:
+      - __init__.py
+      - interchange.py
+      - interchange_resolver.py
+      - routing.py
+      - send.py
 
   # --- AGENTS.md from runtime repo (the canonical one) ---
   agents_md:
@@ -203,6 +214,11 @@ allowlist:
       - acp-daemon-setup.sh
       - check-governance.sh
       - hindsight-health-check.py
+      - memory-health-gate.py
+      - memory-lifecycle.py
+      - memory-lifecycle-soak-check.py
+      - quality-gates.py
+      - stumble_contract.py
       - stumble-triage.py
       - stumble-review.py
       - stumble-cleanup.py
@@ -316,7 +332,6 @@ denylist:
     - forge/
     - dream/
     - hooks/
-    - acp/
     - config/
     - specs/
     - .ossbuild/
