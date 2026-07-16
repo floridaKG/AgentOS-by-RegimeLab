@@ -146,8 +146,7 @@ See [docs/OPTIONAL_BACKENDS.md](docs/OPTIONAL_BACKENDS.md) or
 
 ## How it fits together
 
-**Visual overview** (open in a browser after clone):  
-[docs/assets/oss-architecture-diagram.html](docs/assets/oss-architecture-diagram.html)
+**Visual overview:** [open the rendered architecture overview](https://floridaKG.github.io/AgentOS-by-RegimeLab/) · [view the HTML source](docs/assets/oss-architecture-diagram.html)
 
 Covers agents that can connect, MOE tiers (including persistent multi-iteration
 work), Sidecar modes, skill-rank → pack → inject, memory promote/inject, rtk,
@@ -188,7 +187,7 @@ cockpit features.
 | [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) | First ~10 minutes |
 | [SETUP.md](SETUP.md) | Full installation options |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components and request flow |
-| [docs/assets/oss-architecture-diagram.html](docs/assets/oss-architecture-diagram.html) | Interactive architecture poster |
+| [Rendered architecture overview](https://floridaKG.github.io/AgentOS-by-RegimeLab/) · [source](docs/assets/oss-architecture-diagram.html) | Interactive architecture poster |
 | [docs/OPTIONAL_BACKENDS.md](docs/OPTIONAL_BACKENDS.md) | Pinecone, Neo4j, Hindsight |
 | [docs/MEMORY_USER_GUIDE.md](docs/MEMORY_USER_GUIDE.md) | write, recall, promote |
 | [AGENTS.md](AGENTS.md) | Entrypoint agents read on boot |

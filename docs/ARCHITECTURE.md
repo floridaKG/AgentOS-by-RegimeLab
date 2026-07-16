@@ -2,8 +2,8 @@
 
 > This document describes how Agent OS works. For installation, see [SETUP.md](../SETUP.md).
 
-**Visual overview:** open
-[assets/oss-architecture-diagram.html](assets/oss-architecture-diagram.html)
+**Visual overview:** [open the rendered architecture overview](https://floridaKG.github.io/AgentOS-by-RegimeLab/)
+or view the [HTML source](assets/oss-architecture-diagram.html)
 in a browser (network required for the display-only brand mark). Logo binaries
 are **not** shipped in this repo — see [assets/BRAND.md](assets/BRAND.md).
 

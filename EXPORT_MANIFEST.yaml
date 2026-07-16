@@ -249,6 +249,8 @@ allowlist:
       - SYSTEM_ARCHITECTURE_SOURCE_OF_TRUTH.md
       - OPTIONAL_BACKENDS.md
       - GETTING_STARTED.md
+      - index.html
+      - .nojekyll
       # Architecture marketing assets (logo binaries intentionally NOT shipped —
       # display-only hotlink; see docs/assets/BRAND.md)
       - assets/BRAND.md
