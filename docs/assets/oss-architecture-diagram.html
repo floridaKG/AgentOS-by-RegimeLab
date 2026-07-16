@@ -190,8 +190,8 @@
   }
 
   .brand-mark {
-    width: 72px;
-    height: 72px;
+    width: 88px;
+    height: 88px;
     margin: 0 0 14px;
     display: block;
     object-fit: contain;
@@ -259,6 +259,103 @@
   .badge.gold {
     color: var(--rl-gold);
     border-color: rgba(212, 160, 23, 0.32);
+  }
+
+  .view-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 0 auto 16px;
+    padding: 8px;
+    width: fit-content;
+    max-width: 100%;
+    border: 1px solid rgba(232, 237, 245, 0.12);
+    border-radius: 999px;
+    background: rgba(3, 4, 10, 0.48);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 12px 30px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(24px) saturate(150%);
+  }
+
+  .view-toolbar .label {
+    margin: 0 5px 0 8px;
+    color: var(--rl-text-muted);
+    font-size: 0.64rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .view-button {
+    border: 1px solid transparent;
+    border-radius: 999px;
+    padding: 7px 12px;
+    color: var(--rl-text-2);
+    background: transparent;
+    font: 600 0.68rem Syne, sans-serif;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: color 180ms ease, background 180ms ease, border-color 180ms ease, transform 180ms ease;
+  }
+
+  .view-button:hover,
+  .view-button:focus-visible {
+    color: var(--rl-text-1);
+    border-color: rgba(89, 135, 223, 0.32);
+    background: rgba(89, 135, 223, 0.1);
+    transform: translateY(-1px);
+    outline: none;
+  }
+
+  .view-button[aria-pressed="true"] {
+    color: #07121a;
+    border-color: var(--rl-blue);
+    background: linear-gradient(135deg, #9ebcff, #69e0d2);
+    box-shadow: 0 0 24px rgba(89, 135, 223, 0.2);
+  }
+
+  .card,
+  .sig-card,
+  .mode-card,
+  .pillar,
+  .surf-card,
+  .opt-chip {
+    transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease, opacity 220ms ease;
+  }
+
+  .card:hover,
+  .sig-card:hover,
+  .mode-card:hover,
+  .pillar:hover,
+  .surf-card:hover,
+  .opt-chip:hover {
+    transform: translateY(-3px);
+    border-color: rgba(142, 232, 220, 0.34);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.3), 0 0 26px rgba(89, 135, 223, 0.08);
+  }
+
+  [data-focus-target] { scroll-margin-top: 18px; }
+
+  .diagram[data-focus="memory"] [data-focus-target]:not([data-focus-target="memory"]),
+  .diagram[data-focus="dispatch"] [data-focus-target]:not([data-focus-target="dispatch"]),
+  .diagram[data-focus="skills"] [data-focus-target]:not([data-focus-target="skills"]) {
+    opacity: 0.34;
+  }
+
+  .diagram[data-focus="memory"] [data-focus-target="memory"],
+  .diagram[data-focus="dispatch"] [data-focus-target="dispatch"],
+  .diagram[data-focus="skills"] [data-focus-target="skills"] {
+    border-color: rgba(142, 232, 220, 0.55);
+    box-shadow: 0 0 34px rgba(89, 135, 223, 0.14);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  @media (max-width: 560px) {
+    .view-toolbar { border-radius: 16px; }
+    .view-toolbar .label { width: 100%; text-align: center; margin: 2px 0 0; }
   }
 
   .badge.feature {
@@ -796,8 +893,8 @@
         <img
           class="brand-mark"
           src="https://app.regime-lab.com/assets/regimelab-logo-transparent-C9fEkeux.png"
-          width="72"
-          height="72"
+          width="88"
+          height="88"
           alt="Regime Lab"
           referrerpolicy="no-referrer"
         />
@@ -819,6 +916,14 @@
         <span class="badge">Apache 2.0 · open-core</span>
       </div>
     </header>
+
+    <div class="view-toolbar" role="group" aria-label="Architecture focus controls">
+      <span class="label">Explore</span>
+      <button class="view-button" type="button" data-focus="all" aria-pressed="true">All layers</button>
+      <button class="view-button" type="button" data-focus="memory" aria-pressed="false">Memory</button>
+      <button class="view-button" type="button" data-focus="dispatch" aria-pressed="false">Dispatch</button>
+      <button class="view-button" type="button" data-focus="skills" aria-pressed="false">Skills &amp; protocol</button>
+    </div>
 
     <div class="diagram rl-glass rl-glass-edge" id="diagram">
       <div class="layer">
@@ -918,7 +1023,7 @@
         </div>
 
         <div class="pillars">
-          <div class="pillar p1 rl-glass dense">
+          <div class="pillar p1 rl-glass dense" data-focus-target="memory">
             <h3>1 · Memory (always on)</h3>
             <ul>
               <li><strong>SQLite</strong> lessons, stumbles, decisions</li>
@@ -934,7 +1039,7 @@
             </div>
             <p class="footnote">Default store is local. Vector/graph promote is opt-in.</p>
           </div>
-          <div class="pillar p2 rl-glass dense">
+          <div class="pillar p2 rl-glass dense" data-focus-target="dispatch">
             <h3>2 · Dispatch (opt-in)</h3>
             <ul>
               <li><strong>ACP</strong> agents can hand off tasks</li>
@@ -944,7 +1049,7 @@
             </ul>
             <p class="footnote">Scaffolding — needs agent credentials &amp; config.</p>
           </div>
-          <div class="pillar p3 rl-glass dense">
+          <div class="pillar p3 rl-glass dense" data-focus-target="skills">
             <h3>3 · Skills &amp; protocol</h3>
             <ul>
               <li><strong>skill-rank / pack</strong> load on demand</li>
@@ -1027,5 +1132,19 @@
       <code>docs/assets/oss-architecture-diagram.html</code>
     </footer>
   </div>
+<script>
+  (() => {
+    const diagram = document.querySelector('#diagram');
+    const buttons = [...document.querySelectorAll('[data-focus]')];
+    buttons.forEach((button) => button.addEventListener('click', () => {
+      const focus = button.dataset.focus;
+      diagram.dataset.focus = focus;
+      buttons.forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+      if (focus !== 'all') {
+        document.querySelector(`[data-focus-target="${focus}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }));
+  })();
+</script>
 </body>
 </html>
