@@ -20,7 +20,9 @@ echo ""
 # Create isolated HOME
 CLEANROOM_DIR=$(mktemp -d)
 CLEANROOM_HOME="$CLEANROOM_DIR/home"
+LAUNCHER_HOME="$CLEANROOM_DIR/launcher-home"
 mkdir -p "$CLEANROOM_HOME"
+mkdir -p "$LAUNCHER_HOME"
 export HOME="$CLEANROOM_HOME"
 
 # Remove any AGENT_OS_HOME that might leak from the parent
@@ -55,7 +57,7 @@ check "Original tree has no .git" bash -c "cd '$STAGE' && ! find '.' -mindepth 2
 # ── Step 2: Run installer ──
 echo ""
 echo "--- Step 2: Run installer ---"
-check "install.sh executes" bash -c "AGENT_OS_HOME='$STAGE' HOME='$CLEANROOM_HOME' bash '$STAGE/install.sh' 2>&1"
+check "install.sh executes" bash -c "AGENT_OS_TEST=1 AGENT_OS_TEST_HOME='$CLEANROOM_HOME' AGENT_OS_HOME='$STAGE' HOME='$LAUNCHER_HOME' bash '$STAGE/install.sh' 2>&1"
 check "config.env created" bash -c 'test -f "'"$CLEANROOM_HOME"'/.config/agent-os/config.env"'
 check "secrets.env created" bash -c 'test -f "'"$CLEANROOM_HOME"'/.config/agent-os/secrets.env"'
 check "config.env has AGENT_OS_HOME" bash -c 'grep -q "AGENT_OS_HOME" "'"$CLEANROOM_HOME"'/.config/agent-os/config.env"'
@@ -157,7 +159,7 @@ check "superdocs has SKILL_GLOSSARY.md" test -f "$TEST_PROJECT/docs/skills/SKILL
 # ── Step 13: Idempotency ──
 echo ""
 echo "--- Step 13: Idempotency ---"
-check "second install is idempotent" bash -c "AGENT_OS_HOME='$STAGE' HOME='$CLEANROOM_HOME' bash '$STAGE/install.sh' 2>&1"
+check "second install is idempotent" bash -c "AGENT_OS_TEST=1 AGENT_OS_TEST_HOME='$CLEANROOM_HOME' AGENT_OS_HOME='$STAGE' HOME='$LAUNCHER_HOME' bash '$STAGE/install.sh' 2>&1"
 check "idempotent config preserved" bash -c 'test -f "'"$CLEANROOM_HOME"'/.config/agent-os/config.env" && grep -q "AGENT_OS_HOME" "'"$CLEANROOM_HOME"'/.config/agent-os/config.env"'
 check "idempotent secrets preserved" bash -c 'test -f "'"$CLEANROOM_HOME"'/.config/agent-os/secrets.env"'
 

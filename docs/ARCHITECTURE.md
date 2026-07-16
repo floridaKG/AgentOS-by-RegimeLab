@@ -1,6 +1,6 @@
 # Agent OS - Architecture
 
-> This document describes how Agent OS works. For installation, see `SETUP.md`.
+> This document describes how Agent OS works. For installation, see [SETUP.md](../SETUP.md).
 
 **Visual overview:** open
 [assets/oss-architecture-diagram.html](assets/oss-architecture-diagram.html)

@@ -13,7 +13,7 @@ external services.
 
 ### Required (Local Core)
 
-- **Python 3.10+** — check with `python3 --version`
+- **Python 3.10+ and pip** — check with `python3 --version` and `python3 -m pip --version`
 - **Git** — check with `git --version`
 - **Bash** — standard on Linux and WSL2
 - **One LLM provider API key** — for the agent CLI you use (Claude Code, Codex, OpenCode, etc.)

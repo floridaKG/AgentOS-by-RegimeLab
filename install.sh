@@ -11,10 +11,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AGENT_OS_HOME="${AGENT_OS_HOME:-$SCRIPT_DIR}"
-CONFIG_DIR="${HOME}/.config/agent-os"
-CONFIG_FILE="${CONFIG_DIR}/config.env"
-SECRETS_FILE="${CONFIG_DIR}/secrets.env"
-WORKFLOW_CONFIG_DIR="${HOME}/.config/agent-workflows"
 TEST_MODE="${AGENT_OS_TEST:-0}"
 TEST_HOME="${AGENT_OS_TEST_HOME:-}"
 WITH_RTK=0
@@ -65,6 +61,12 @@ if [ "$TEST_MODE" = "1" ]; then
   HOME="$TEST_HOME"
 fi
 
+# Resolve HOME-dependent paths after test-mode isolation is applied.
+CONFIG_DIR="${HOME}/.config/agent-os"
+CONFIG_FILE="${CONFIG_DIR}/config.env"
+SECRETS_FILE="${CONFIG_DIR}/secrets.env"
+WORKFLOW_CONFIG_DIR="${HOME}/.config/agent-workflows"
+
 echo "=== Agent OS Installer ==="
 echo "Install target: $AGENT_OS_HOME"
 echo "Test mode: $TEST_MODE"
@@ -83,6 +85,10 @@ done
 
 if [ -z "$PYTHON" ]; then
   fail "Python 3 is required (not found). Install: apt install python3 / brew install python"
+fi
+
+if [ "$TEST_MODE" != "1" ] && ! $PYTHON -m pip --version >/dev/null 2>&1; then
+  fail "pip is required for dependency installation. Install it with: apt install python3-pip (Linux) or python3 -m ensurepip --upgrade (macOS/other)"
 fi
 
 PY_VERSION=$($PYTHON --version 2>&1 | awk '{print $2}')
@@ -219,12 +225,14 @@ if [ -f "$AGENT_OS_HOME/requirements.txt" ]; then
   if [ "$TEST_MODE" = "1" ]; then
     skip "Python dependencies (test mode)"
   else
+    PIP_STATUS=0
     if [ -n "${VIRTUAL_ENV:-}" ]; then
-      $PYTHON -m pip install -r "$AGENT_OS_HOME/requirements.txt" --quiet 2>&1 || \
-        echo "  WARN: pip install had issues — you may need: pip install -r requirements.txt"
+      $PYTHON -m pip install -r "$AGENT_OS_HOME/requirements.txt" --quiet 2>&1 || PIP_STATUS=$?
     else
-      $PYTHON -m pip install --user -r "$AGENT_OS_HOME/requirements.txt" --quiet 2>&1 || \
-        echo "  WARN: pip install had issues — you may need: pip install --user -r requirements.txt"
+      $PYTHON -m pip install --user -r "$AGENT_OS_HOME/requirements.txt" --quiet 2>&1 || PIP_STATUS=$?
+    fi
+    if [ "$PIP_STATUS" -ne 0 ]; then
+      fail "Python dependency installation failed (exit $PIP_STATUS). Run: $PYTHON -m pip install -r '$AGENT_OS_HOME/requirements.txt'"
     fi
     pass "Python dependencies installed"
   fi

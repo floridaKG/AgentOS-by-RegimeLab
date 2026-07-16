@@ -148,9 +148,9 @@ Last updated: YYYY-MM-DD
 
 | WS | Objective | Status | Depends on | Spec | Verified |
 |---|---|---|---|---|---|
-| WS-1 | <goal> | DONE | — | [spec](WS-1_slug.md) | ✅ |
-| WS-2 | <goal> | IN_PROGRESS | WS-1 | [spec](WS-2_slug.md) | — |
-| WS-3 | <goal> | NOT_STARTED | WS-2 | [spec](WS-3_slug.md) | — |
+| WS-1 | <goal> | DONE | — | `WS-1_slug.md` | ✅ |
+| WS-2 | <goal> | IN_PROGRESS | WS-1 | `WS-2_slug.md` | — |
+| WS-3 | <goal> | NOT_STARTED | WS-2 | `WS-3_slug.md` | — |
 
 ## Timeline
 

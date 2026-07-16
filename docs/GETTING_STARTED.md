@@ -227,7 +227,7 @@ backends later.
 | Set up Pinecone, Neo4j, or Hindsight | [docs/OPTIONAL_BACKENDS.md](OPTIONAL_BACKENDS.md) |
 | Configure MOE panels | Edit `~/.config/agent-workflows/panels.toml` |
 | See all available skills | `cat $AGENT_OS_HOME/registry/skills.yaml` |
-| Run the full setup guide | [SETUP.md](SETUP.md) |
+| Run the full setup guide | [SETUP.md](../SETUP.md) |
 
 ## Troubleshooting
 
