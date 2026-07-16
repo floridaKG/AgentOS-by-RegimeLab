@@ -249,6 +249,16 @@ allowlist:
       - SYSTEM_ARCHITECTURE_SOURCE_OF_TRUTH.md
       - OPTIONAL_BACKENDS.md
       - GETTING_STARTED.md
+      # Architecture marketing assets (logo binaries intentionally NOT shipped —
+      # display-only hotlink; see docs/assets/BRAND.md)
+      - assets/BRAND.md
+      - assets/oss-architecture-diagram.html
+      - assets/video/overview.mp4
+      # Launch / claim-safe marketing package
+      - launch/adversarial-readme-review.md
+      - launch/claim-inventory.md
+      - launch/cold-path-evidence.md
+      - launch/x-article.md
 
   # --- Tests (shipped for user verification) ---
   tests:

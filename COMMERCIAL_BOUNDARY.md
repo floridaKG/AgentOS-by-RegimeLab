@@ -44,6 +44,13 @@ If a feature is already in this repository under Apache 2.0, it stays Apache
 2.0. Commercial offerings extend the hosted plane and managed operations; they
 do not re-license the public tree.
 
+## Trademarks and brand mark
+
+**Regime Lab** name and Mandelbrot logo are brand assets. They are **not**
+granted under Apache 2.0. This repository does not ship logo binary source
+files for redistribution; any on-page display uses the product site for
+**display only**. See [docs/assets/BRAND.md](docs/assets/BRAND.md).
+
 ## Vault OS honesty
 
 The public Vault OS example is **structural scaffolding** only. Personalized

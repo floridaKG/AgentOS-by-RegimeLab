@@ -1,50 +1,46 @@
 # Agent OS
 
-**The harness your AI coding agents run on — shared memory, multi-agent dispatch, and cross-agent learning that accumulates instead of resetting.**
+**A shared operating layer for AI coding agents** — local tools, conventions,
+skills, and optional routing that sit around the agent CLIs you already use.
+
+<p align="center">
+  <img src="https://app.regime-lab.com/assets/regimelab-logo-transparent-C9fEkeux.png" alt="Regime Lab" width="72" height="72" />
+</p>
+
+<p align="center"><sub>by Regime Lab · Apache 2.0 · open-core</sub></p>
+<p align="center"><sub>Logo displayed from Regime Lab product site — brand mark not licensed with this repo (see <a href="docs/assets/BRAND.md">docs/assets/BRAND.md</a>).</sub></p>
+
+---
+
+## What this is / is not
+
+| This **is** | This **is not** |
+|---|---|
+| A CLI **harness** under your agents (memory, skills, workflows, dispatch scaffolding) | A new LLM, chat app, or “autonomous OS” that replaces your agents |
+| **Local-first**: default memory is SQLite on your machine | A hosted multi-tenant control plane (that’s commercial plane) |
+| Compatible with agents that **can connect with setup** (Claude Code, Codex, OpenCode, Pi, Grok, Droid, and others) | A claim that every agent works with zero configuration |
+| Opt-in cloud backends (Pinecone, Neo4j, Hindsight) | Cloud or API keys required for the core |
+| Runnable multi-agent **patterns** (MOE panels, red-team, swarm) | An automatic gate that always reviews every change |
+
+Cross-agent sharing needs a **shared store** and conventions — not magic sync
+across unrelated machines. ACP dispatch needs **ACPx** plus your agent CLIs
+and credentials.
 
 ---
 
 ## The problem
 
-You run Claude Code, Codex, or OpenCode. Every session starts cold. Your agent
-doesn't remember what it learned yesterday. It doesn't know what the other
-agent discovered last week. It can't call a different model when it's stuck.
-And the lessons you capture in one tool are invisible to the others.
+You run multiple AI coding agents. Sessions start cold. Lessons from last week
+live in one tool and stay invisible to the others. Getting a second opinion
+means copy-paste between windows.
 
-Agent OS fixes this. It's a CLI harness that sits underneath your agents —
-giving them shared memory, a dispatch protocol to call each other, and
-workflows to combine multiple models on hard problems. It works with the tools
-you already use.
+Agent OS gives you a local place to write and recall lessons, scripts to run
+multi-model workflows when you want them, and scaffolding to dispatch work
+between agents once you configure it.
 
-## What it looks like in practice
+---
 
-**Without Agent OS:**
-You ask Claude Code to fix a bug in your auth flow. It reads the file cold,
-rediscovering the same edge case Codex documented three days ago. It fixes the
-bug but doesn't record what it learned. Tomorrow, you open OpenCode to review
-a different file and start from zero again.
-
-**With Agent OS:**
-You ask Claude Code to fix the bug. On startup, its memory is injected with
-Codex's lesson from three days ago: "the token refresh path in auth.py:142
-fails silently when the session expires during a database migration." Claude
-Code reads the file already knowing the edge case, fixes it in one pass, and
-writes a stumble for the pattern it found. Tomorrow, OpenCode picks up both
-lessons. Over weeks, your agents accumulate a knowledge base that grows with
-every session.
-
-## Who this is for
-
-You run multiple AI coding agents and want them to share context. You're tired
-of repeating the same setup instructions. You want a second opinion from a
-different model without copy-pasting between tools. You want your agents to
-get smarter over time instead of starting from scratch every morning.
-
-If you use one agent occasionally for simple tasks, you don't need Agent OS.
-If you live in a terminal with multiple agents and want them to work together,
-this is for you.
-
-## Quickstart
+## Quickstart (local core — no cloud keys)
 
 ```bash
 git clone https://github.com/floridaKG/AgentOS-by-RegimeLab.git
@@ -53,143 +49,175 @@ cd AgentOS-by-RegimeLab
 source ~/.config/agent-os/config.env
 ```
 
-Four commands. You now have local memory, recall CLIs, workflow scripts, and
-skill packs. Verify with:
+**Minimum requirements:** Python 3.10+, Git, Bash. Linux and WSL2 are tested.
+macOS is not verified for v1 claims. No Node.js, no hosted services, and no
+API keys are required for the local core.
+
+### Prove memory works (write → recall)
+
+```bash
+echo "Agent OS local core write/recall smoke test — unique $(date +%s)" > /tmp/aos-smoke.txt
+
+memory-st write \
+  --run-id "quickstart-$(date +%s)" \
+  --agent-id "you" \
+  --workspace "demo" \
+  --intent LESSON \
+  --kind observation \
+  --summary "Agent OS local core write/recall smoke test" \
+  --content-file /tmp/aos-smoke.txt \
+  --source-ref "readme:quickstart"
+
+memory-recall --text "local core write/recall smoke test" --tier short_term
+```
+
+You should see the lesson you just wrote (JSON including your summary). That is
+the cold path: install → write → recall, entirely local.
+
+If the database is brand new, run `memory-st init` once after install (also
+safe to re-run).
+
+**First time?** [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) is a ~10-minute
+walkthrough. Or run `./install.sh --quickstart` to seed demo records.
+
+Verify tooling with:
 
 ```bash
 bash scripts/agent-os-health.sh
 ```
 
-**First time?** Read [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) for a
-10-minute walkthrough — every step produces visible output. Or run
-`./install.sh --quickstart` to seed demo memory records so `recall` returns
-results immediately.
-
-**Minimum requirements:** Python 3.10+, Git, Bash. Linux and WSL2 are tested.
-No Node.js, no hosted services, no API keys needed for the core.
-
 For multi-agent dispatch, install [ACPx](https://www.npmjs.com/package/acpx)
-(`npm install -g acpx`) and configure your agent CLI credentials. See
-[SETUP.md](SETUP.md) for the full walkthrough.
+and configure agent CLI credentials. See [SETUP.md](SETUP.md).
+
+---
 
 ## What you get
 
-### Memory that accumulates
+### Memory that accumulates (local SQLite)
 
-A local SQLite store that agents write to and search. Lessons, stumbles, and
-decisions persist across sessions. Agents query shared memory with `recall`
-before starting work — no more discovering the same edge case twice.
+A local SQLite store that agents (and you) can write to and search. Lessons,
+stumbles, and decisions persist across sessions when you use the CLIs.
 
 ```bash
-recall "how do we handle token refresh errors"
-memory-st write --intent LESSON --summary "auth.py:142 fails silently during DB migrations"
+memory-recall --text "how do we handle token refresh errors" --tier short_term
+# write requires --content-file; see docs/GETTING_STARTED.md for a full example
 ```
 
-Optional auto-injection: the recall hook can inject relevant context before
-every prompt. Requires a one-time agent hook configuration. See
-[docs/MEMORY_USER_GUIDE.md](docs/MEMORY_USER_GUIDE.md) for setup.
+Optional auto-injection into agent sessions is **opt-in** and requires a
+one-time hook setup. See [docs/MEMORY_USER_GUIDE.md](docs/MEMORY_USER_GUIDE.md).
 
-### Multi-agent dispatch
+### Multi-agent dispatch (with setup)
 
-Agents call each other through ACP (Agent Communication Protocol). Claude Code
-dispatches a code review to Codex. Codex hands off a hard problem to a
-higher-capability model. Every task is tracked with a run record you can
-inspect and audit.
+Agents **can** call each other through ACP when ACPx and agent CLIs are
+installed and configured. Tasks can be tracked with a run record.
 
 ```bash
 acp-task code_reviewer work "Review the auth flow for SQL injection" --wait
-acp-task executor work "Apply the security fix" --session auth-hardening --wait
 ```
 
-One-shot for quick handoffs, persistent sessions for multi-turn work.
+### Multi-model reasoning — MOE tiers (with setup)
 
-### Multi-model reasoning (MOE)
-
-When one model isn't enough, fire a panel. Three models answer in parallel, a
-judge synthesizes the disagreements. Or run a red-team: proposer defends,
-attacker finds holes, adjudicator decides. Or a swarm: parallel explorers
-investigate from different angles.
+When one model isn’t enough, fire a panel or iterative workflow. Tiers range
+from cheap parallel panels to **persistent multi-iteration** collaborate /
+red-team style loops for deeper work. These need configured providers.
 
 ```bash
 team fire --tier 2 --members "claude opus, codex gpt-5.5" --task "Review this spec for security issues"
 ./agent-workflow redteam ./spec.md 4 --proposer architect --attacker escalation
 ```
 
-Five MOE tiers from cheap parallel LLM panels to persistent iterative rounds.
-See [docs/OPTIONAL_BACKENDS.md](docs/OPTIONAL_BACKENDS.md) for panel
-configuration.
+See [docs/OPTIONAL_BACKENDS.md](docs/OPTIONAL_BACKENDS.md) for panel configuration.
 
 ### Doc protocols and conventions
 
-Agent OS ships document templates and conventions so your agents stop
-reinventing formats. Spec templates, handoff standards, report conventions
-with required STUMBLES/CONFIRMED/ARTIFACTS sections. Hard rules enforced
-by machine-readable policy. Your agents follow the same playbook every time.
+Spec templates, handoff standards, and report conventions ship in-tree so
+agents can follow the same playbook. Enforcement depends on using the shipped
+tools and conventions — not an invisible automatic gate on every edit.
 
-### Optional: semantic, graph, and cross-agent memory
+### Optional backends
 
-Add Pinecone for semantic search across sessions. Neo4j for graph
-relationships between records. Hindsight for cross-agent memory sharing
-via a shared bank bridge. Each backend is uncomment-two-lines simple, and
-the system degrades gracefully when they're not configured.
+Add Pinecone, Neo4j, or Hindsight when you want semantic, graph, or bank-bridge
+memory. Each is opt-in; the core degrades gracefully without them.
 
-See [docs/OPTIONAL_BACKENDS.md](docs/OPTIONAL_BACKENDS.md) for the guided
-setup walkthrough, or run `./install.sh --setup-memory` for an interactive
-provisioning walkthrough.
+See [docs/OPTIONAL_BACKENDS.md](docs/OPTIONAL_BACKENDS.md) or
+`./install.sh --setup-memory`.
+
+---
 
 ## How it fits together
 
+**Visual overview** (open in a browser after clone):  
+[docs/assets/oss-architecture-diagram.html](docs/assets/oss-architecture-diagram.html)
+
+Covers agents that can connect, MOE tiers (including persistent multi-iteration
+work), Sidecar modes, skill-rank → pack → inject, memory promote/inject, rtk,
+governed knowledge surfaces, and the local cold path. Core is local SQLite;
+cloud backends are opt-in.
+
 ```
-Your agents (Claude Code, Codex, OpenCode)
+Your agents (Claude Code, Codex, OpenCode, Pi, Grok, Droid, + more with setup)
         │
         ├── Memory layer ── SQLite (always on) + optional Pinecone/Neo4j/Hindsight
         │   ├── recall      Search across memory tiers
-        │   ├── inject      Auto-inject relevant context on session start
-        │   └── promote     Move stable lessons to long-term storage
+        │   ├── inject      Opt-in context injection (hook setup)
+        │   └── promote     Move stable lessons when configured
         │
-        ├── ACP dispatch ── Agents call each other through a protocol daemon
-        │   ├── acp-task    Fire-and-forget or block-and-wait dispatch
-        │   ├── acp-daemon  Polls inboxes, dispatches to target agents
-        │   └── Run ledger  Every task tracked with state, events, and artifacts
+        ├── ACP dispatch ── with ACPx + agent CLIs + config
+        │   ├── acp-task    Dispatch helpers
+        │   └── Run ledger  Task tracking when dispatch is used
         │
-        ├── Workflows ── Multi-agent patterns for hard problems
-        │   ├── team        MOE panels (1/2/2r/3/P tiers)
-        │   ├── swarm       Parallel explorers + synthesis
-        │   ├── council     Independent opinions + moderator
-        │   ├── redteam     Adversarial proposer/attacker/adjudicator
-        │   └── orchestrate Explore → architect → execute → review loop
+        ├── Workflows ── MOE / swarm / council / redteam / orchestrate (patterns)
         │
-        └── Skills ── 15 shared skill packs agents load on demand
-            ├── acp, recall, lesson, digest, doc-audit
-            ├── moe, agent-workflows, adversarial-review
-            └── upward-handoff, changes-review, umbrella-refactor
+        └── Skills ── shared skill packs agents load on demand
 ```
 
-Everything runs locally. Nothing phones home. Your API keys stay in your
-`config.env`.
+The local core does not phone home. Provider API keys you add stay in your
+`config.env` / secrets files.
+
+**Video overview (~5 minutes):**  
+[docs/assets/video/overview.mp4](docs/assets/video/overview.mp4) — wiki-style
+tour of the system. Not a product demo of adversarial review or private
+cockpit features.
+
+---
 
 ## Getting deeper
 
 | Document | When to read it |
 |----------|----------------|
-| [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) | First 10 minutes — concrete walkthrough |
-| [SETUP.md](SETUP.md) | Full installation walkthrough with every option |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the components connect and the request flow |
-| [docs/OPTIONAL_BACKENDS.md](docs/OPTIONAL_BACKENDS.md) | Set up Pinecone, Neo4j, or Hindsight |
-| [docs/MEMORY_USER_GUIDE.md](docs/MEMORY_USER_GUIDE.md) | Memory commands: write, recall, promote |
-| [AGENTS.md](AGENTS.md) | Entrypoint your agents read on boot |
+| [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) | First ~10 minutes |
+| [SETUP.md](SETUP.md) | Full installation options |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components and request flow |
+| [docs/assets/oss-architecture-diagram.html](docs/assets/oss-architecture-diagram.html) | Interactive architecture poster |
+| [docs/OPTIONAL_BACKENDS.md](docs/OPTIONAL_BACKENDS.md) | Pinecone, Neo4j, Hindsight |
+| [docs/MEMORY_USER_GUIDE.md](docs/MEMORY_USER_GUIDE.md) | write, recall, promote |
+| [AGENTS.md](AGENTS.md) | Entrypoint agents read on boot |
 | [BOOT.md](BOOT.md) | Intent router: which skill for which task |
+| [docs/launch/claim-inventory.md](docs/launch/claim-inventory.md) | Public claim inventory |
+
+## Known limitations
+
+- Linux / WSL2 tested; macOS not verified for v1 claims  
+- Multi-agent dispatch and MOE need your agent CLIs, models, and often ACPx  
+- Memory injection and optional backends are configuration-dependent  
+- CI covers privacy/history gates and selected tests — not a full product SLA  
+- Open-core: hosted memory, managed governance, and enterprise controls are commercial plane (see commercial boundary)
 
 ## License
 
-Apache 2.0. See [LICENSE](LICENSE). Full commercial use, modification, and
-redistribution are permitted.
+Apache 2.0. See [LICENSE](LICENSE).
 
-Agent OS is open-core: the full harness is free and open source. Hosted
+Agent OS is open-core: the public harness is free and open source. Hosted
 memory, managed governance, and enterprise controls are reserved for
-commercial offerings — not license restrictions. See
+commercial offerings — not license restrictions on this tree. See
 [COMMERCIAL_BOUNDARY.md](COMMERCIAL_BOUNDARY.md).
 
 ## Security
 
 See [SECURITY.md](SECURITY.md) for how to report vulnerabilities.
+
+## CI
+
+GitHub Actions runs privacy/history gates and selected security/ACP tests on
+`main` and pull requests. Green CI is not a promise that every workflow works
+on every machine without configuration.

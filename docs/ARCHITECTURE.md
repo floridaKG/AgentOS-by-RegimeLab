@@ -2,26 +2,34 @@
 
 > This document describes how Agent OS works. For installation, see `SETUP.md`.
 
-Agent OS is an **agent-agnostic harness** - the OS that AI coding agents run on.
-It provides shared memory, dispatch protocols, workspace routing, and enforced
-governance so agents don't start every session cold.
+**Visual overview:** open
+[assets/oss-architecture-diagram.html](assets/oss-architecture-diagram.html)
+in a browser (network required for the display-only brand mark). Logo binaries
+are **not** shipped in this repo — see [assets/BRAND.md](assets/BRAND.md).
+
+Agent OS is an **agent-agnostic harness** — a shared operating layer around AI
+coding agent CLIs. It provides local memory, optional dispatch, workspace
+routing, and governance **conventions** so sessions need not start cold when
+you use the shipped tools.
 
 ## North Star
 
-Agent OS exists to be the best agent-agnostic harness available.
+Agent OS aims to be a strong agent-agnostic harness for multi-agent workflows.
 
-- **Agent-agnostic.** Any agent (Claude Code, Codex, OpenCode, and future models)
-  participates as a first-class citizen. New models slot in without rewiring.
-- **Cross-agent memory.** Every agent contributes to shared memory. Stumbles are
-  captured, reviewed, and promoted so all agents learn together.
-- **Multi-agent, multi-provider.** Agents call each other through ACP. Providers
-  are swappable. No lock-in at any layer.
-- **Enforced protocols.** The harness enforces document creation, maintenance,
-  lifecycle, and memory promotion rules so agents don't rediscover them.
-- **Agent voice.** Agents report gaps and friction. The system listens and improves.
+- **Agent-agnostic.** Agents that can connect with setup (Claude Code, Codex,
+  OpenCode, and others) participate as first-class citizens. New models slot in
+  without rewiring the harness core.
+- **Cross-agent memory (with shared store).** Agents **can** contribute to shared
+  memory when they write/recall against the same local (or configured) store.
+- **Multi-agent, multi-provider (with setup).** Agents **can** call each other
+  through ACP when ACPx and CLIs are configured. Providers are swappable.
+- **Protocols as tools + conventions.** Specs, handoffs, and promotion rules ship
+  as templates and CLIs — not an invisible automatic gate on every edit.
+- **Agent voice.** Agents can report gaps and friction via shipped patterns.
 
 This is a **harness**, not a framework. Frameworks are libraries you import.
-The harness owns the outcome, learns from mistakes, and improves every cycle.
+The harness supplies the operating layer; outcomes still depend on how you and
+your agents use it.
 
 ## Four Main Components
 

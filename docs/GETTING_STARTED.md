@@ -47,10 +47,12 @@ Expected output: `{"ok": true, "id": "st_...", ...}`
 ### Recall it
 
 ```bash
-recall "how many failed login attempts trigger rate limiting"
+memory-recall --text "how many failed login attempts trigger rate limiting" --tier short_term
 ```
 
-Expected output: the record you just wrote, with its summary and content.
+Expected output: JSON including the record you just wrote (summary/content).
+(`recall` may exist as a shell alias in some maintainer setups; the shipped
+CLI is `memory-recall`.)
 
 This is the core loop: agents write lessons, agents recall them later. Memory
 accumulates with every session.

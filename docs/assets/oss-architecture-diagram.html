@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Agent OS by Regime Lab — How it fits together (OSS)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Syne:wght@600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    color-scheme: dark;
+    --rl-bg-base: #000000;
+    --rl-bg-panel: #03040a;
+    --rl-bg-elevated: #070910;
+    --rl-border-subtle: #0e1118;
+    --rl-border-default: #161a24;
+    --rl-blue: #5987df;
+    --rl-blue-dim: #1a2848;
+    --rl-gold: #d4a017;
+    --rl-amber: #d97706;
+    --rl-text-1: #e8edf5;
+    --rl-text-2: #8a96ad;
+    --rl-text-muted: #3d465c;
+    --glass-r: 12px;
+    --glass-r-sm: 10px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "IBM Plex Sans", "Segoe UI", Arial, sans-serif;
+    background: var(--rl-bg-base);
+    color: var(--rl-text-1);
+    padding: 36px 18px 52px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  .rl-mesh-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(59, 127, 255, 0.12) 1px, transparent 0),
+      radial-gradient(circle at 1px 1px, rgba(59, 127, 255, 0.05) 1px, transparent 0),
+      linear-gradient(to right, rgba(18, 32, 64, 0.22) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(18, 32, 64, 0.22) 1px, transparent 1px);
+    background-size: 160px 160px, 60px 60px, 60px 60px, 60px 60px;
+    opacity: 0.28;
+    animation: landing-grid-drift 28s linear infinite;
+  }
+
+  @keyframes landing-grid-drift {
+    from { background-position: 0 0, 0 0, 0 0, 0 0; }
+    to   { background-position: 160px 160px, 60px 60px, 60px 60px, 60px 60px; }
+  }
+
+  .rl-aurora {
+    position: fixed;
+    inset: -12%;
+    z-index: 0;
+    pointer-events: none;
+    filter: blur(100px) saturate(120%);
+    opacity: 0.55;
+    background:
+      radial-gradient(38% 32% at 20% 26%, rgba(89, 135, 223, 0.22), transparent 72%),
+      radial-gradient(32% 28% at 78% 16%, rgba(59, 127, 255, 0.12), transparent 72%),
+      radial-gradient(26% 24% at 68% 80%, rgba(212, 160, 23, 0.07), transparent 72%),
+      radial-gradient(30% 26% at 10% 84%, rgba(20, 32, 64, 0.35), transparent 72%);
+    animation: rl-aurora-drift 30s ease-in-out infinite alternate;
+  }
+
+  @keyframes rl-aurora-drift {
+    0%   { transform: translate3d(0, 0, 0) scale(1); }
+    50%  { transform: translate3d(-1.5%, 1%, 0) scale(1.04); }
+    100% { transform: translate3d(1.5%, -0.8%, 0) scale(1.02); }
+  }
+
+  .rl-glass {
+    position: relative;
+    background:
+      linear-gradient(
+        145deg,
+        rgba(232, 237, 245, 0.045) 0%,
+        rgba(89, 135, 223, 0.04) 18%,
+        rgba(3, 4, 10, 0.42) 55%,
+        rgba(0, 0, 0, 0.72) 100%
+      );
+    backdrop-filter: blur(36px) saturate(165%);
+    -webkit-backdrop-filter: blur(36px) saturate(165%);
+    box-shadow:
+      inset 0 1px 0 0 rgba(232, 237, 245, 0.14),
+      inset 0 -1px 0 0 rgba(0, 0, 0, 0.65),
+      inset 0 0 0 1px rgba(232, 237, 245, 0.04),
+      0 24px 64px rgba(0, 0, 0, 0.72),
+      0 0 0 1px rgba(89, 135, 223, 0.04);
+    border-radius: var(--glass-r);
+    overflow: hidden;
+  }
+
+  .rl-glass::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(ellipse 70% 36% at 28% -4%, rgba(232, 237, 245, 0.12), transparent 55%),
+      radial-gradient(ellipse 55% 28% at 22% 0%, rgba(89, 135, 223, 0.16), transparent 68%),
+      radial-gradient(ellipse 48% 28% at 92% 100%, rgba(212, 160, 23, 0.06), transparent 70%);
+    mix-blend-mode: screen;
+    opacity: 0.9;
+  }
+
+  .rl-glass.dense {
+    background:
+      linear-gradient(
+        150deg,
+        rgba(89, 135, 223, 0.05) 0%,
+        rgba(5, 6, 12, 0.62) 45%,
+        rgba(0, 0, 0, 0.82) 100%
+      );
+    backdrop-filter: blur(28px) saturate(150%);
+    -webkit-backdrop-filter: blur(28px) saturate(150%);
+    box-shadow:
+      inset 0 1px 0 0 rgba(232, 237, 245, 0.10),
+      inset 0 -1px 0 0 rgba(0, 0, 0, 0.7),
+      inset 0 0 0 1px rgba(232, 237, 245, 0.03),
+      0 12px 36px rgba(0, 0, 0, 0.55);
+  }
+
+  .rl-glass.light {
+    background:
+      linear-gradient(
+        145deg,
+        rgba(232, 237, 245, 0.06) 0%,
+        rgba(89, 135, 223, 0.03) 30%,
+        rgba(0, 0, 0, 0.48) 100%
+      );
+    backdrop-filter: blur(40px) saturate(170%);
+    -webkit-backdrop-filter: blur(40px) saturate(170%);
+  }
+
+  .rl-glass-edge::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      rgba(232, 237, 245, 0.42) 0%,
+      rgba(89, 135, 223, 0.45) 22%,
+      rgba(232, 237, 245, 0.04) 48%,
+      transparent 62%,
+      rgba(212, 160, 23, 0.22) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+  }
+
+  .rl-glass > * { position: relative; z-index: 1; }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  .brand-lockup {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .brand-mark {
+    width: 72px;
+    height: 72px;
+    margin: 0 0 14px;
+    display: block;
+    object-fit: contain;
+    /* Real mark already carries gold glow; keep filter light */
+    filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.55));
+  }
+
+  header h1 {
+    margin: 0;
+    font-family: Syne, "IBM Plex Sans", sans-serif;
+    font-size: clamp(1.8rem, 4.2vw, 2.25rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--rl-text-1);
+    text-shadow: 0 0 40px rgba(89, 135, 223, 0.12);
+  }
+
+  header .byline {
+    margin: 6px 0 0;
+    font-family: Syne, sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--rl-gold);
+    opacity: 0.9;
+  }
+
+  header .tagline {
+    margin: 12px auto 0;
+    max-width: 44rem;
+    color: var(--rl-text-2);
+    font-size: 0.94rem;
+    line-height: 1.55;
+  }
+
+  .badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 14px;
+  }
+
+  .badge {
+    font-family: Syne, sans-serif;
+    font-size: 0.64rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 6px 11px;
+    border-radius: 999px;
+    color: var(--rl-text-2);
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid var(--rl-border-default);
+    backdrop-filter: blur(16px);
+  }
+
+  .badge.core {
+    color: var(--rl-blue);
+    border-color: rgba(89, 135, 223, 0.35);
+    box-shadow: 0 0 24px rgba(89, 135, 223, 0.06);
+  }
+
+  .badge.gold {
+    color: var(--rl-gold);
+    border-color: rgba(212, 160, 23, 0.32);
+  }
+
+  .badge.feature {
+    color: rgba(232, 237, 245, 0.88);
+    border-color: rgba(89, 135, 223, 0.22);
+    background: rgba(89, 135, 223, 0.06);
+  }
+
+  .diagram {
+    padding: 26px 20px 24px;
+    box-shadow:
+      inset 0 1px 0 0 rgba(232, 237, 245, 0.14),
+      inset 0 -1px 0 0 rgba(0, 0, 0, 0.65),
+      inset 0 0 0 1px rgba(232, 237, 245, 0.04),
+      0 32px 90px rgba(0, 0, 0, 0.78),
+      0 0 100px rgba(59, 127, 255, 0.06);
+  }
+
+  .layer-label {
+    font-family: Syne, sans-serif;
+    font-size: 0.64rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--rl-text-muted);
+    margin: 0 0 10px 2px;
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .card.agent {
+    flex: 1 1 100px;
+    max-width: 148px;
+    min-width: 100px;
+    text-align: center;
+    padding: 12px 8px;
+    border-radius: var(--glass-r-sm);
+  }
+
+  .card.agent strong {
+    display: block;
+    font-family: Syne, sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--rl-text-1);
+  }
+
+  .card.agent span {
+    display: block;
+    margin-top: 3px;
+    font-size: 0.66rem;
+    color: var(--rl-text-muted);
+  }
+
+  .companion-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    align-items: stretch;
+    margin-top: 12px;
+  }
+
+  .companion {
+    flex: 0 1 280px;
+    padding: 12px 14px;
+    border-radius: var(--glass-r-sm);
+    border: 1px dashed rgba(212, 160, 23, 0.35);
+    text-align: left;
+  }
+
+  .companion .kicker {
+    font-family: Syne, sans-serif;
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--rl-gold);
+  }
+
+  .companion strong {
+    display: block;
+    margin-top: 2px;
+    font-family: Syne, sans-serif;
+    font-size: 0.88rem;
+    color: var(--rl-text-1);
+  }
+
+  .companion p {
+    margin: 4px 0 0;
+    font-size: 0.7rem;
+    line-height: 1.4;
+    color: var(--rl-text-2);
+  }
+
+  .arrow-down {
+    text-align: center;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+    margin: 16px 0 14px;
+    color: var(--rl-text-2);
+  }
+
+  .arrow-down .glyph {
+    display: block;
+    font-size: 1rem;
+    line-height: 1.2;
+    color: rgba(89, 135, 223, 0.55);
+    margin-bottom: 2px;
+  }
+
+  .arrow-down .hint {
+    margin-top: 4px;
+    color: var(--rl-text-muted);
+    font-size: 0.68rem;
+  }
+
+  .harness {
+    padding: 20px 14px 16px;
+    border-radius: var(--glass-r);
+  }
+
+  .harness .title {
+    margin: 0 0 4px;
+    text-align: center;
+    font-family: Syne, sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--rl-text-1);
+  }
+
+  .harness .sub {
+    margin: 0 0 16px;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--rl-text-2);
+  }
+
+  .signature {
+    margin: 0 0 16px;
+    padding: 14px 12px 12px;
+    border-radius: var(--glass-r-sm);
+  }
+
+  .signature > h3,
+  .surfaces > h3,
+  .modes > h3 {
+    margin: 0 0 10px;
+    text-align: center;
+    font-family: Syne, sans-serif;
+    font-size: 0.64rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--rl-text-muted);
+  }
+
+  .sig-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+  }
+
+  .sig-card {
+    padding: 12px 12px 13px;
+    border-radius: var(--glass-r-sm);
+    text-align: left;
+  }
+
+  .sig-card .kicker {
+    display: block;
+    font-family: Syne, sans-serif;
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--rl-blue);
+    margin-bottom: 3px;
+  }
+
+  .sig-card.gold .kicker { color: var(--rl-gold); }
+
+  .sig-card strong {
+    display: block;
+    font-family: Syne, sans-serif;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--rl-text-1);
+    margin-bottom: 4px;
+  }
+
+  .sig-card p {
+    margin: 0;
+    font-size: 0.7rem;
+    line-height: 1.45;
+    color: var(--rl-text-2);
+  }
+
+  .sig-card .mini-flow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    margin-top: 8px;
+  }
+
+  .sig-card .mini-flow span {
+    font-family: Syne, sans-serif;
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--rl-text-1);
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: rgba(89, 135, 223, 0.1);
+    border: 1px solid rgba(89, 135, 223, 0.2);
+  }
+
+  .sig-card .mini-flow .arr {
+    border: none;
+    background: none;
+    padding: 0;
+    color: var(--rl-text-muted);
+    font-family: inherit;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    font-size: 0.65rem;
+  }
+
+  .modes {
+    margin: 0 0 16px;
+    padding: 14px 12px 12px;
+    border-radius: var(--glass-r-sm);
+  }
+
+  .mode-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+  }
+
+  .mode-card {
+    padding: 12px;
+    border-radius: var(--glass-r-sm);
+  }
+
+  .mode-card h4 {
+    margin: 0 0 6px;
+    font-family: Syne, sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--rl-text-1);
+  }
+
+  .mode-card h4 em {
+    font-style: normal;
+    color: var(--rl-blue);
+    font-weight: 600;
+  }
+
+  .mode-card.gold h4 em { color: var(--rl-gold); }
+
+  .mode-card p {
+    margin: 0;
+    font-size: 0.7rem;
+    line-height: 1.45;
+    color: var(--rl-text-2);
+  }
+
+  .mode-card ul {
+    margin: 6px 0 0;
+    padding-left: 1rem;
+    font-size: 0.68rem;
+    line-height: 1.45;
+    color: var(--rl-text-2);
+  }
+
+  .mode-card li strong { color: var(--rl-text-1); }
+
+  .pillars {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+  }
+
+  .pillar {
+    padding: 14px 12px;
+    border-radius: var(--glass-r-sm);
+    border-left: 2px solid rgba(89, 135, 223, 0.65);
+  }
+
+  .pillar.p2 { border-left-color: rgba(89, 135, 223, 0.4); }
+  .pillar.p3 { border-left-color: rgba(212, 160, 23, 0.5); }
+
+  .pillar h3 {
+    margin: 0 0 8px;
+    font-family: Syne, sans-serif;
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--rl-blue);
+  }
+
+  .pillar.p3 h3 { color: var(--rl-gold); }
+
+  .pillar ul {
+    margin: 0;
+    padding-left: 1.05rem;
+    color: var(--rl-text-2);
+    font-size: 0.74rem;
+    line-height: 1.5;
+  }
+
+  .pillar li strong {
+    color: var(--rl-text-1);
+    font-weight: 600;
+  }
+
+  .mem-flow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    align-items: center;
+    margin: 10px 0 0;
+    padding-top: 9px;
+    border-top: 1px solid rgba(20, 23, 31, 0.9);
+    font-size: 0.66rem;
+    color: var(--rl-text-2);
+  }
+
+  .mem-flow span {
+    font-family: Syne, sans-serif;
+    font-weight: 600;
+    font-size: 0.58rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--rl-text-1);
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: rgba(89, 135, 223, 0.08);
+    border: 1px solid rgba(89, 135, 223, 0.18);
+  }
+
+  .mem-flow .arr {
+    color: var(--rl-text-muted);
+    font-size: 0.68rem;
+    border: none;
+    background: none;
+    padding: 0;
+    font-family: inherit;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .pillar .footnote {
+    margin: 9px 0 0;
+    font-size: 0.66rem;
+    line-height: 1.4;
+    color: var(--rl-amber);
+    border-top: 1px solid var(--rl-border-subtle);
+    padding-top: 7px;
+  }
+
+  .surfaces {
+    margin-top: 14px;
+    padding: 14px 12px 12px;
+    border-radius: var(--glass-r-sm);
+  }
+
+  .surf-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+  }
+
+  .surf-card {
+    padding: 12px;
+    border-radius: var(--glass-r-sm);
+    text-align: left;
+  }
+
+  .surf-card .kicker {
+    display: block;
+    font-family: Syne, sans-serif;
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--rl-gold);
+    margin-bottom: 3px;
+  }
+
+  .surf-card.blue .kicker { color: var(--rl-blue); }
+
+  .surf-card strong {
+    display: block;
+    font-family: Syne, sans-serif;
+    font-size: 0.84rem;
+    color: var(--rl-text-1);
+    margin-bottom: 4px;
+  }
+
+  .surf-card p {
+    margin: 0;
+    font-size: 0.68rem;
+    line-height: 1.45;
+    color: var(--rl-text-2);
+  }
+
+  .optional {
+    margin-top: 12px;
+    padding: 12px 12px 14px;
+    border-radius: var(--glass-r-sm);
+  }
+
+  .optional h3 {
+    margin: 0 0 10px;
+    text-align: center;
+    font-family: Syne, sans-serif;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--rl-text-2);
+  }
+
+  .opt-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .opt-chip {
+    min-width: 140px;
+    text-align: center;
+    padding: 10px 12px;
+    border-radius: var(--glass-r-sm);
+  }
+
+  .opt-chip strong {
+    display: block;
+    font-family: Syne, sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--rl-text-1);
+  }
+
+  .opt-chip span {
+    font-size: 0.66rem;
+    color: var(--rl-text-muted);
+  }
+
+  .flow {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--rl-border-subtle);
+  }
+
+  .flow h3 {
+    margin: 0 0 12px;
+    text-align: center;
+    font-family: Syne, sans-serif;
+    font-size: 0.64rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--rl-text-muted);
+  }
+
+  .steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .step {
+    padding: 7px 12px;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    color: var(--rl-text-1);
+  }
+
+  .step em {
+    font-style: normal;
+    font-weight: 600;
+    color: var(--rl-blue);
+    margin-right: 4px;
+  }
+
+  .step-arrow {
+    color: var(--rl-text-muted);
+    font-size: 0.9rem;
+  }
+
+  footer {
+    margin-top: 22px;
+    text-align: center;
+    font-size: 0.7rem;
+    color: var(--rl-text-muted);
+    line-height: 1.55;
+  }
+
+  footer code {
+    font-size: 0.66rem;
+    color: var(--rl-text-2);
+    background: rgba(7, 9, 16, 0.9);
+    border: 1px solid var(--rl-border-subtle);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .rl-mesh-bg, .rl-aurora { animation: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="rl-mesh-bg" aria-hidden="true"></div>
+  <div class="rl-aurora" aria-hidden="true"></div>
+
+  <div class="wrap">
+    <header>
+      <div class="brand-lockup">
+        <img
+          class="brand-mark"
+          src="https://app.regime-lab.com/assets/regimelab-logo-transparent-C9fEkeux.png"
+          width="72"
+          height="72"
+          alt="Regime Lab"
+          referrerpolicy="no-referrer"
+        />
+        <h1>Agent OS</h1>
+        <p class="byline">by Regime Lab</p>
+      </div>
+      <p class="tagline">
+        The harness your AI coding agents run on — tiered deliberation, persistent
+        partners, skill packs on demand, token-efficient shells, and memory that
+        compounds. Governed surfaces keep knowledge from becoming a junk drawer.
+      </p>
+      <div class="badge-row">
+        <span class="badge core">Core · local SQLite</span>
+        <span class="badge feature">M-O-E tiers</span>
+        <span class="badge feature">Sidecar</span>
+        <span class="badge feature">skill-rank</span>
+        <span class="badge feature">rtk</span>
+        <span class="badge gold">Cloud · opt-in</span>
+        <span class="badge">Apache 2.0 · open-core</span>
+      </div>
+    </header>
+
+    <div class="diagram rl-glass rl-glass-edge" id="diagram">
+      <div class="layer">
+        <div class="layer-label">Your agents · can connect with setup</div>
+        <div class="row">
+          <div class="card agent rl-glass light rl-glass-edge"><strong>Claude Code</strong><span>can connect</span></div>
+          <div class="card agent rl-glass light rl-glass-edge"><strong>Codex</strong><span>can connect</span></div>
+          <div class="card agent rl-glass light rl-glass-edge"><strong>OpenCode</strong><span>can connect</span></div>
+          <div class="card agent rl-glass light rl-glass-edge"><strong>Pi</strong><span>can connect</span></div>
+          <div class="card agent rl-glass light rl-glass-edge"><strong>Grok</strong><span>can connect</span></div>
+          <div class="card agent rl-glass light rl-glass-edge"><strong>Droid</strong><span>can connect</span></div>
+          <div class="card agent rl-glass light rl-glass-edge"><strong>+ more</strong><span>with setup</span></div>
+        </div>
+        <div class="companion-row">
+          <div class="companion rl-glass dense">
+            <span class="kicker">Beside the OS · not inside it</span>
+            <strong>Hermes</strong>
+            <p>Personal runtime, scheduler, and messaging. Own memory stack; governed one-way bridges into shared Agent OS memory — companion, not a merged identity.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-down">
+        <span class="glyph">↓</span>
+        inject · recall · skill-pack · rtk shell · optional dispatch
+        <div class="hint">A strong driver can fan out many workers — each stays thin on context</div>
+      </div>
+
+      <div class="harness rl-glass rl-glass-edge">
+        <p class="title">Agent OS harness</p>
+        <p class="sub">Shared operating layer around agent CLIs — not a replacement for them</p>
+
+        <!-- Modes: MOE tiers + Sidecar persistence contrast -->
+        <div class="modes rl-glass dense rl-glass-edge">
+          <h3>How work runs · tiers &amp; persistence</h3>
+          <div class="mode-grid">
+            <div class="mode-card rl-glass dense">
+              <h4><em>M-O-E</em> · Mixture of Experts family</h4>
+              <p>Not only one-shot. Pick the depth you need:</p>
+              <ul>
+                <li><strong>1 Quick</strong> — parallel models + judge (fast panels)</li>
+                <li><strong>2 / 2r Swarm</strong> — full agents; read-only audit mode</li>
+                <li><strong>3 Persistent</strong> — multi-round collaborate / redteam with shared transcript</li>
+              </ul>
+            </div>
+            <div class="mode-card rl-glass dense gold">
+              <h4><em>Sidecar</em> · driver + partner</h4>
+              <p><strong>Persistent session</strong> — not a one-shot subagent. You reason; the partner executes across turns with shared state. Optional <strong>heavy</strong> advisor thinks only (no shell).</p>
+              <ul>
+                <li><strong>One-shot</strong> — fire, answer, done (MOE 1, explorers)</li>
+                <li><strong>Persistent</strong> — Sidecar sessions · MOE 3 rounds</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Signature product moves -->
+        <div class="signature rl-glass dense rl-glass-edge">
+          <h3>Signature moves</h3>
+          <div class="sig-row">
+            <div class="sig-card rl-glass dense">
+              <span class="kicker">Skills</span>
+              <strong>Rank → pack → inject</strong>
+              <p>Agents find the skill they need, extract a bounded pack, and load only that slice — not the whole encyclopedia.</p>
+              <div class="mini-flow">
+                <span>skill-rank</span><span class="arr">→</span>
+                <span>skill-pack</span><span class="arr">→</span>
+                <span>context</span>
+              </div>
+            </div>
+            <div class="sig-card rl-glass dense gold">
+              <span class="kicker">rtk</span>
+              <strong>Rust Token Killer</strong>
+              <p>Shell traffic is filtered and compacted before it hits the model. Fan-out stays affordable when a driver (e.g. Claude) runs many workers.</p>
+              <div class="mini-flow">
+                <span>ls / read / git</span><span class="arr">→</span>
+                <span>rtk</span><span class="arr">→</span>
+                <span>thin context</span>
+              </div>
+            </div>
+            <div class="sig-card rl-glass dense">
+              <span class="kicker">Memory</span>
+              <strong>Promote → inject</strong>
+              <p>Capture lessons, promote into long-term search (opt-in backends), inject relevant context next session.</p>
+              <div class="mini-flow">
+                <span>capture</span><span class="arr">→</span>
+                <span>promote</span><span class="arr">→</span>
+                <span>inject</span>
+              </div>
+            </div>
+            <div class="sig-card rl-glass dense gold">
+              <span class="kicker">Driver pattern</span>
+              <strong>One mind · many hands</strong>
+              <p>High-reasoning drivers plan and judge; Sidecar / MOE / workflows execute. rtk + skill packs keep every hand cheap.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="pillars">
+          <div class="pillar p1 rl-glass dense">
+            <h3>1 · Memory (always on)</h3>
+            <ul>
+              <li><strong>SQLite</strong> lessons, stumbles, decisions</li>
+              <li><strong>recall</strong> search before work</li>
+              <li><strong>write</strong> what the session learned</li>
+              <li><strong>inject</strong> bounded packet context</li>
+            </ul>
+            <div class="mem-flow" aria-label="Memory lifecycle">
+              <span>capture</span><span class="arr">→</span>
+              <span>short-term</span><span class="arr">→</span>
+              <span>promote</span><span class="arr">→</span>
+              <span>vector / graph</span>
+            </div>
+            <p class="footnote">Default store is local. Vector/graph promote is opt-in.</p>
+          </div>
+          <div class="pillar p2 rl-glass dense">
+            <h3>2 · Dispatch (opt-in)</h3>
+            <ul>
+              <li><strong>ACP</strong> agents can hand off tasks</li>
+              <li><strong>Run ledger</strong> tracked task records</li>
+              <li><strong>ACPX</strong> session transport when configured</li>
+              <li><strong>M-O-E / workflows</strong> sit above interchange</li>
+            </ul>
+            <p class="footnote">Scaffolding — needs agent credentials &amp; config.</p>
+          </div>
+          <div class="pillar p3 rl-glass dense">
+            <h3>3 · Skills &amp; protocol</h3>
+            <ul>
+              <li><strong>skill-rank / pack</strong> load on demand</li>
+              <li><strong>M-O-E · Sidecar</strong> deliberation &amp; partnership</li>
+              <li><strong>Patterns</strong> swarm / council / redteam</li>
+              <li><strong>Specs &amp; gates</strong> no unowned SSOT sprawl</li>
+            </ul>
+            <p class="footnote">Patterns are runnable — not automatic gates.</p>
+          </div>
+        </div>
+
+        <!-- Surfaces: Vault OS, SuperDocs, governance -->
+        <div class="surfaces rl-glass dense rl-glass-edge">
+          <h3>Family surfaces · governed knowledge (not junk drawers)</h3>
+          <div class="surf-row">
+            <div class="surf-card rl-glass dense blue">
+              <span class="kicker">Knowledge OS</span>
+              <strong>Vault OS</strong>
+              <p>Lanes, workstreams, capture→insights pipeline, structural graph. Integrity checks block freehand chaos and random roots.</p>
+            </div>
+            <div class="surf-card rl-glass dense">
+              <span class="kicker">Workspace truth</span>
+              <strong>SuperDocs</strong>
+              <p>Product/workspace doc OS (e.g. Regime Lab): BOOT indexes, registries, production-vs-local truth. Indexed, not freeform drift.</p>
+            </div>
+            <div class="surf-card rl-glass dense blue">
+              <span class="kicker">Protocol</span>
+              <strong>Governance</strong>
+              <p>Specs, registries, health gates, claim-safe marketing. Stray docs don’t become source of truth without a home and a check.</p>
+            </div>
+            <div class="surf-card rl-glass dense">
+              <span class="kicker">Companion</span>
+              <strong>Hermes</strong>
+              <p>Sits beside Agent OS: personal memory, cron, messaging. Bridges into shared memory when confirmed — never silently merged.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="optional rl-glass dense rl-glass-edge">
+          <h3>Optional backends — system degrades without them</h3>
+          <div class="opt-row">
+            <div class="opt-chip rl-glass dense">
+              <strong>Pinecone</strong>
+              <span>semantic search · promote target</span>
+            </div>
+            <div class="opt-chip rl-glass dense">
+              <strong>Neo4j</strong>
+              <span>graph relationships · promote</span>
+            </div>
+            <div class="opt-chip rl-glass dense">
+              <strong>Hindsight</strong>
+              <span>Hermes bank · bridge only</span>
+            </div>
+            <div class="opt-chip rl-glass dense">
+              <strong>rtk</strong>
+              <span>token-efficient shell · preferred</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flow">
+        <h3>Cold path — no cloud keys required</h3>
+        <div class="steps">
+          <span class="step rl-glass dense"><em>1</em> install</span>
+          <span class="step-arrow">→</span>
+          <span class="step rl-glass dense"><em>2</em> memory-st write</span>
+          <span class="step-arrow">→</span>
+          <span class="step rl-glass dense"><em>3</em> recall finds it</span>
+          <span class="step-arrow">→</span>
+          <span class="step rl-glass dense"><em>4</em> optional extras</span>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      Agent OS by Regime Lab · liquid-glass theme · claim-safe open-core visual<br />
+      Logo is display-only via product CDN — not shipped or licensed with this repo (see BRAND.md)<br />
+      Open in a browser with network · Screenshot · or Print → Save as PDF<br />
+      <code>docs/assets/oss-architecture-diagram.html</code>
+    </footer>
+  </div>
+</body>
+</html>

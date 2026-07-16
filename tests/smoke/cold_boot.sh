@@ -63,7 +63,9 @@ echo "--- Scrub Checks ---"
 check "no owner username" bash -c "cd \"$STAGE\" && ! rg -qi \"${OWNER_USERNAME:-testuser}\" . --hidden --no-ignore -g '!.git/**' -g '!.ossbuild/**' -g '!droid-wiki/**' -g '!tests/**' -g '!PRIVACY_BOUNDARY.md' -g '!scripts/gate-privacy.sh' -g '!scripts/gate-release.sh'"
 check "no owner Linux paths" bash -c "cd \"$STAGE\" && ! rg -q \"/home/${OWNER_USERNAME:-testuser}(?:/|\\\\b)\" . --hidden --no-ignore -g '!.git/**' -g '!.ossbuild/**' -g '!droid-wiki/**' -g '!tests/**' -g '!PRIVACY_BOUNDARY.md'"
 check "no owner Windows-mount paths" bash -c "cd \"$STAGE\" && ! rg -q \"/mnt/c/Users/${OWNER_USERNAME:-testuser}(?:/|\\\\b)\" . --hidden --no-ignore -g '!.git/**' -g '!.ossbuild/**' -g '!droid-wiki/**' -g '!tests/**' -g '!PRIVACY_BOUNDARY.md'"
-check "no owner service identifiers" bash -c "cd \"$STAGE\" && ! rg -qi 'floridakg|regime-lab\\.com|hwymwmhshzmhkewusdec' . --hidden --no-ignore -g '!.git/**' -g '!.ossbuild/**' -g '!droid-wiki/**' -g '!tests/**' -g '!PRIVACY_BOUNDARY.md' -g '!README.md' -g '!SETUP.md' -g '!LICENSE' -g '!RELEASE_READINESS.md' -g '!SECURITY.md' -g '!docs/codegraph-setup.md' -g '!scripts/gate-privacy.sh' -g '!scripts/gate-release.sh'"
+# Public clone URL + brand/launch surfaces may name the GitHub owner/repo.
+# Align exclusions with tests/privacy/privacy_gate.sh (owner_service_ids).
+check "no owner service identifiers" bash -c "cd \"$STAGE\" && ! rg -qi 'floridakg|regime-lab\\.com|hwymwmhshzmhkewusdec' . --hidden --no-ignore -g '!.git/**' -g '!.ossbuild/**' -g '!droid-wiki/**' -g '!tests/**' -g '!PRIVACY_BOUNDARY.md' -g '!README.md' -g '!SETUP.md' -g '!LICENSE' -g '!RELEASE_READINESS.md' -g '!SECURITY.md' -g '!docs/codegraph-setup.md' -g '!docs/launch/**' -g '!docs/assets/**' -g '!docs/ARCHITECTURE.md' -g '!scripts/gate-privacy.sh' -g '!scripts/gate-release.sh'"
 check "no .env files" bash -c "! find \"$STAGE\" -name '.env' -print | grep -q ."
 check "no .sqlite files" bash -c "! find \"$STAGE\" -name '*.sqlite' -print | grep -q ."
 check "no handoffs directory" bash -c "! find \"$STAGE\" -name 'handoffs' -type d -not -path '*/.ossbuild/*' -print | grep -q ."

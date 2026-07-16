@@ -3,7 +3,7 @@
 ## Architecture
 
 Agent OS memory is a **core-plus-adapters** architecture. The core provides
-local, zero-configuration memory that works out of the box. Optional
+local SQLite memory after install — no cloud keys required. Optional
 adapters add semantic search and graph capabilities when configured.
 
 ```
