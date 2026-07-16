@@ -927,9 +927,10 @@
         <p class="byline">by Regime Lab</p>
       </div>
       <p class="tagline">
-        The harness your AI coding agents run on — tiered deliberation, persistent
-        partners, skill packs on demand, token-efficient shells, and memory that
-        compounds. Governed surfaces keep knowledge from becoming a junk drawer.
+        A local-first operating layer for AI coding agents — shared memory, skill
+        packs on demand, efficient shell tooling, and optional multi-agent
+        workflows. Add connected services when you need them; the local core
+        remains useful on its own.
       </p>
       <div class="badge-row">
         <span class="badge core">Core · local SQLite</span>
@@ -937,7 +938,7 @@
         <span class="badge feature">Sidecar</span>
         <span class="badge feature">skill-rank</span>
         <span class="badge feature">rtk</span>
-        <span class="badge gold">Cloud · opt-in</span>
+        <span class="badge gold">Services · optional</span>
         <span class="badge">Apache 2.0 · open-core</span>
       </div>
     </header>
@@ -966,7 +967,7 @@
           <div class="companion rl-glass dense">
             <span class="kicker">Beside the OS · not inside it</span>
             <strong>Hermes</strong>
-            <p>Personal runtime, scheduler, and messaging. Own memory stack; governed one-way bridges into shared Agent OS memory — companion, not a merged identity.</p>
+            <p>Personal runtime, scheduler, and messaging with a separate memory stack. Governed one-way bridges can connect it to shared Agent OS memory — companion, not merged identity.</p>
           </div>
         </div>
       </div>
@@ -974,7 +975,7 @@
       <div class="arrow-down">
         <span class="glyph">↓</span>
         inject · recall · skill-pack · rtk shell · optional dispatch
-        <div class="hint">A strong driver can fan out many workers — each stays thin on context</div>
+        <div class="hint">With setup, a strong driver can fan out workers — each stays thin on context</div>
       </div>
 
       <div class="harness rl-glass rl-glass-edge">
@@ -987,7 +988,7 @@
           <div class="mode-grid">
             <div class="mode-card rl-glass dense">
               <h4><em>M-O-E</em> · Mixture of Experts family</h4>
-              <p>Not only one-shot. Pick the depth you need:</p>
+              <p>Choose the depth you need:</p>
               <ul>
                 <li><strong>1 Quick</strong> — parallel models + judge (fast panels)</li>
                 <li><strong>2 / 2r Swarm</strong> — full agents; read-only audit mode</li>
@@ -1012,7 +1013,7 @@
             <div class="sig-card rl-glass dense">
               <span class="kicker">Skills</span>
               <strong>Rank → pack → inject</strong>
-              <p>Agents find the skill they need, extract a bounded pack, and load only that slice — not the whole encyclopedia.</p>
+              <p>Agents find the skill they need, extract a bounded pack, and load only the context required for the task.</p>
               <div class="mini-flow">
                 <span>skill-rank</span><span class="arr">→</span>
                 <span>skill-pack</span><span class="arr">→</span>
@@ -1022,7 +1023,7 @@
             <div class="sig-card rl-glass dense gold">
               <span class="kicker">rtk</span>
               <strong>Rust Token Killer</strong>
-              <p>Shell traffic is filtered and compacted before it hits the model. Fan-out stays affordable when a driver (e.g. Claude) runs many workers.</p>
+              <p>An efficiency layer that filters and compacts shell output before it reaches the model. Optional — Agent OS works without it.</p>
               <div class="mini-flow">
                 <span>ls / read / git</span><span class="arr">→</span>
                 <span>rtk</span><span class="arr">→</span>
@@ -1042,7 +1043,7 @@
             <div class="sig-card rl-glass dense gold">
               <span class="kicker">Driver pattern</span>
               <strong>One mind · many hands</strong>
-              <p>High-reasoning drivers plan and judge; Sidecar / MOE / workflows execute. rtk + skill packs keep every hand cheap.</p>
+              <p>Configured drivers plan and judge; Sidecar, MOE, and workflows execute. rtk and skill packs reduce context overhead without changing the core.</p>
             </div>
           </div>
         </div>
@@ -1062,7 +1063,7 @@
               <span>promote</span><span class="arr">→</span>
               <span>vector / graph</span>
             </div>
-            <p class="footnote">Default store is local. Vector/graph promote is opt-in.</p>
+            <p class="footnote">Local SQLite is the core. Connected semantic and graph services are opt-in.</p>
           </div>
           <div class="pillar p2 rl-glass dense" data-focus-target="dispatch">
             <h3>2 · Dispatch (opt-in)</h3>
@@ -1072,7 +1073,7 @@
               <li><strong>ACPX</strong> session transport when configured</li>
               <li><strong>M-O-E / workflows</strong> sit above interchange</li>
             </ul>
-            <p class="footnote">Scaffolding — needs agent credentials &amp; config.</p>
+            <p class="footnote">Requires agent credentials and configuration.</p>
           </div>
           <div class="pillar p3 rl-glass dense" data-focus-target="skills">
             <h3>3 · Skills &amp; protocol</h3>
@@ -1088,22 +1089,22 @@
 
         <!-- Surfaces: Vault OS, SuperDocs, governance -->
         <div class="surfaces rl-glass dense rl-glass-edge">
-          <h3>Family surfaces · governed knowledge (not junk drawers)</h3>
+          <h3>Governed knowledge surfaces</h3>
           <div class="surf-row">
             <div class="surf-card rl-glass dense blue">
               <span class="kicker">Knowledge OS</span>
               <strong>Vault OS</strong>
-              <p>Lanes, workstreams, capture→insights pipeline, structural graph. Integrity checks block freehand chaos and random roots.</p>
+              <p>Lanes, workstreams, capture→insights pipeline, and structural graph. Integrity checks keep knowledge structured and navigable.</p>
             </div>
             <div class="surf-card rl-glass dense">
               <span class="kicker">Workspace truth</span>
               <strong>SuperDocs</strong>
-              <p>Product/workspace doc OS (e.g. Regime Lab): BOOT indexes, registries, production-vs-local truth. Indexed, not freeform drift.</p>
+              <p>Product/workspace documentation with BOOT indexes, registries, and production-vs-local truth. Keeps project knowledge indexed and aligned.</p>
             </div>
             <div class="surf-card rl-glass dense blue">
               <span class="kicker">Protocol</span>
               <strong>Governance</strong>
-              <p>Specs, registries, health gates, claim-safe marketing. Stray docs don’t become source of truth without a home and a check.</p>
+              <p>Specs, registries, health gates, and claim-safe marketing keep source-of-truth boundaries explicit.</p>
             </div>
             <div class="surf-card rl-glass dense">
               <span class="kicker">Companion</span>
@@ -1114,23 +1115,23 @@
         </div>
 
         <div class="optional rl-glass dense rl-glass-edge">
-          <h3>Optional backends — system degrades without them</h3>
+          <h3>Optional capabilities — local core remains complete</h3>
           <div class="opt-row">
             <div class="opt-chip rl-glass dense">
               <strong>Pinecone</strong>
-              <span>semantic search · promote target</span>
+                <span>semantic search · optional</span>
             </div>
             <div class="opt-chip rl-glass dense">
               <strong>Neo4j</strong>
-              <span>graph relationships · promote</span>
+                <span>graph relationships · optional</span>
             </div>
             <div class="opt-chip rl-glass dense">
               <strong>Hindsight</strong>
-              <span>Hermes bank · bridge only</span>
+                <span>bank bridge · optional</span>
             </div>
             <div class="opt-chip rl-glass dense">
               <strong>rtk</strong>
-              <span>token-efficient shell · preferred</span>
+                <span>efficient shell · optional</span>
             </div>
           </div>
         </div>
