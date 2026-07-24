@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Agent OS by Regime Lab — How it fits together (OSS)</title>
+<title>Agent OS by Regime Lab: How it fits together (OSS)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Syne:wght@600;700&display=swap" rel="stylesheet" />
@@ -278,6 +278,66 @@
   .badge.gold {
     color: var(--rl-gold);
     border-color: rgba(212, 160, 23, 0.32);
+  }
+
+  .value-panel {
+    margin: 0 auto 16px;
+    padding: 20px 18px 18px;
+    border-radius: var(--glass-r);
+  }
+
+  .value-panel h2 {
+    margin: 0;
+    text-align: center;
+    font-family: Syne, sans-serif;
+    font-size: clamp(1.15rem, 2.4vw, 1.55rem);
+    color: var(--rl-text-1);
+  }
+
+  .value-panel > p {
+    max-width: 760px;
+    margin: 8px auto 16px;
+    text-align: center;
+    color: var(--rl-text-2);
+    font-size: 0.82rem;
+    line-height: 1.55;
+  }
+
+  .value-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 10px;
+  }
+
+  .value-card {
+    padding: 12px;
+    border-radius: var(--glass-r-sm);
+    text-align: left;
+  }
+
+  .value-card .number {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--rl-gold);
+    font-family: Syne, sans-serif;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+  }
+
+  .value-card strong {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--rl-text-1);
+    font-family: Syne, sans-serif;
+    font-size: 0.82rem;
+  }
+
+  .value-card p {
+    margin: 0;
+    color: var(--rl-text-2);
+    font-size: 0.7rem;
+    line-height: 1.45;
   }
 
   .view-toolbar {
@@ -797,6 +857,34 @@
     color: var(--rl-text-2);
   }
 
+  .surface-flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    margin-top: 12px;
+    padding-top: 11px;
+    border-top: 1px solid var(--rl-border-subtle);
+    color: var(--rl-text-muted);
+    font-size: 0.68rem;
+    text-align: center;
+  }
+
+  .surface-flow strong {
+    padding: 5px 8px;
+    border: 1px solid rgba(89, 135, 223, 0.2);
+    border-radius: 999px;
+    color: var(--rl-text-1);
+    font-family: Syne, sans-serif;
+    font-size: 0.62rem;
+    letter-spacing: 0.03em;
+  }
+
+  .surface-flow .gold {
+    border-color: rgba(212, 160, 23, 0.28);
+  }
+
   .optional {
     margin-top: 12px;
     padding: 12px 12px 14px;
@@ -927,21 +1015,47 @@
         <p class="byline">by Regime Lab</p>
       </div>
       <p class="tagline">
-        A local-first operating layer for AI coding agents — shared memory, skill
-        packs on demand, efficient shell tooling, and optional multi-agent
-        workflows. Add connected services when you need them; the local core
-        remains useful on its own.
+        A local first operating layer for AI coding agents. Agent OS keeps useful
+        context, project rules, and repeatable work close to the code while
+        leaving the choice of agent, model, and connected service to you.
       </p>
       <div class="badge-row">
         <span class="badge core">Core · local SQLite</span>
-        <span class="badge feature">M-O-E tiers</span>
+        <span class="badge feature">Memory</span>
+        <span class="badge feature">Dispatch</span>
+        <span class="badge feature">Skills</span>
+        <span class="badge feature">Workflows</span>
         <span class="badge feature">Sidecar</span>
-        <span class="badge feature">skill-rank</span>
-        <span class="badge feature">rtk</span>
-        <span class="badge gold">Services · optional</span>
-        <span class="badge">Apache 2.0 · open-core</span>
+        <span class="badge gold">Connected services · optional</span>
+        <span class="badge">Apache 2.0 · open source</span>
       </div>
     </header>
+
+    <section class="value-panel rl-glass rl-glass-edge" aria-labelledby="value-heading">
+      <h2 id="value-heading">Why this scaffolding matters</h2>
+      <p>
+        AI agents are capable, but a project still needs a place for memory, rules,
+        and repeatable ways of working. Agent OS supplies that operating layer so
+        useful knowledge can survive the session that created it.
+      </p>
+      <div class="value-grid">
+        <article class="value-card rl-glass dense">
+          <span class="number">01 · CONTEXT</span>
+          <strong>Keep the useful parts</strong>
+          <p>Lessons, decisions, and source notes become searchable context instead of disappearing when a session ends.</p>
+        </article>
+        <article class="value-card rl-glass dense">
+          <span class="number">02 · CONTROL</span>
+          <strong>Give work a known path</strong>
+          <p>Workspace rules, skills, workflows, and handoffs make execution more consistent and easier to inspect.</p>
+        </article>
+        <article class="value-card rl-glass dense">
+          <span class="number">03 · LEVERAGE</span>
+          <strong>Build once, reuse often</strong>
+          <p>A project can improve its operating system over time without tying that system to one model or one agent client.</p>
+        </article>
+      </div>
+    </section>
 
     <div class="view-toolbar" role="group" aria-label="Architecture focus controls">
       <span class="label">Explore</span>
@@ -967,7 +1081,7 @@
           <div class="companion rl-glass dense">
             <span class="kicker">Beside the OS · not inside it</span>
             <strong>Hermes</strong>
-            <p>Personal runtime, scheduler, and messaging with a separate memory stack. Governed one-way bridges can connect it to shared Agent OS memory — companion, not merged identity.</p>
+            <p>Personal runtime, scheduler, and messaging with a separate memory stack. Governed one way bridges can connect it to shared Agent OS memory. It remains a companion with a separate identity.</p>
           </div>
         </div>
       </div>
@@ -975,12 +1089,12 @@
       <div class="arrow-down">
         <span class="glyph">↓</span>
         inject · recall · skill-pack · rtk shell · optional dispatch
-        <div class="hint">With setup, a strong driver can fan out workers — each stays thin on context</div>
+        <div class="hint">With setup, a strong driver can fan out workers. Each worker stays thin on context.</div>
       </div>
 
       <div class="harness rl-glass rl-glass-edge">
         <p class="title">Agent OS harness</p>
-        <p class="sub">Shared operating layer around agent CLIs — not a replacement for them</p>
+        <p class="sub">Shared operating layer around agent CLIs. It works beside them.</p>
 
         <!-- Modes: MOE tiers + Sidecar persistence contrast -->
         <div class="modes rl-glass dense rl-glass-edge">
@@ -990,17 +1104,17 @@
               <h4><em>M-O-E</em> · Mixture of Experts family</h4>
               <p>Choose the depth you need:</p>
               <ul>
-                <li><strong>1 Quick</strong> — parallel models + judge (fast panels)</li>
-                <li><strong>2 / 2r Swarm</strong> — full agents; read-only audit mode</li>
-                <li><strong>3 Persistent</strong> — multi-round collaborate / redteam with shared transcript</li>
+                <li><strong>1 Quick</strong>: parallel models + judge for fast panels</li>
+                <li><strong>2 / 2r Swarm</strong>: full agents with an audit mode</li>
+                <li><strong>3 Persistent</strong>: multi round collaborate or redteam with shared transcript</li>
               </ul>
             </div>
             <div class="mode-card rl-glass dense gold">
               <h4><em>Sidecar</em> · driver + partner</h4>
-              <p><strong>Persistent session</strong> — not a one-shot subagent. You reason; the partner executes across turns with shared state. Optional <strong>heavy</strong> advisor thinks only (no shell).</p>
+              <p><strong>Persistent session</strong>: more than a one shot subagent. You reason; the partner executes across turns with shared state. An optional <strong>heavy</strong> advisor thinks only with no shell.</p>
               <ul>
-                <li><strong>One-shot</strong> — fire, answer, done (MOE 1, explorers)</li>
-                <li><strong>Persistent</strong> — Sidecar sessions · MOE 3 rounds</li>
+                <li><strong>One shot</strong>: fire, answer, done with MOE 1 and explorers</li>
+                <li><strong>Persistent</strong>: Sidecar sessions and MOE 3 rounds</li>
               </ul>
             </div>
           </div>
@@ -1023,7 +1137,7 @@
             <div class="sig-card rl-glass dense gold">
               <span class="kicker">rtk</span>
               <strong>Rust Token Killer</strong>
-              <p>An efficiency layer that filters and compacts shell output before it reaches the model. Optional — Agent OS works without it.</p>
+              <p>An efficiency layer that filters and compacts shell output before it reaches the model. Optional. Agent OS works without it.</p>
               <div class="mini-flow">
                 <span>ls / read / git</span><span class="arr">→</span>
                 <span>rtk</span><span class="arr">→</span>
@@ -1083,39 +1197,44 @@
               <li><strong>Patterns</strong> swarm / council / redteam</li>
               <li><strong>Specs &amp; gates</strong> no unowned SSOT sprawl</li>
             </ul>
-            <p class="footnote">Patterns are runnable — not automatic gates.</p>
+            <p class="footnote">Patterns are runnable. They are not automatic gates.</p>
           </div>
         </div>
 
         <!-- Surfaces: Vault OS, SuperDocs, governance -->
         <div class="surfaces rl-glass dense rl-glass-edge">
-          <h3>Governed knowledge surfaces</h3>
+          <h3>Where durable knowledge lives</h3>
           <div class="surf-row">
             <div class="surf-card rl-glass dense blue">
-              <span class="kicker">Knowledge OS</span>
+              <span class="kicker">Knowledge workspace</span>
               <strong>Vault OS</strong>
-              <p>Lanes, workstreams, capture→insights pipeline, and structural graph. Integrity checks keep knowledge structured and navigable.</p>
+              <p>A user owned Markdown workspace for capture, sources, insights, maps, operations, and registries. It turns incoming material into knowledge that can be found and connected.</p>
             </div>
             <div class="surf-card rl-glass dense">
-              <span class="kicker">Workspace truth</span>
+              <span class="kicker">Project documentation</span>
               <strong>SuperDocs</strong>
-              <p>Product/workspace documentation with BOOT indexes, registries, and production-vs-local truth. Keeps project knowledge indexed and aligned.</p>
+              <p>A structured docs tree for governance, guardrails, skills, workflows, and registries. It tells agents what the project expects and where its current truth lives.</p>
             </div>
             <div class="surf-card rl-glass dense blue">
-              <span class="kicker">Protocol</span>
-              <strong>Governance</strong>
-              <p>Specs, registries, health gates, and claim-safe marketing keep source-of-truth boundaries explicit.</p>
+              <span class="kicker">The operating layer</span>
+              <strong>Agent OS</strong>
+              <p>Routes the task, recalls relevant context, loads the right skill or workflow, and records what should carry forward.</p>
             </div>
             <div class="surf-card rl-glass dense">
-              <span class="kicker">Companion</span>
-              <strong>Hermes</strong>
-              <p>Sits beside Agent OS: personal memory, cron, messaging. Bridges into shared memory when confirmed — never silently merged.</p>
+              <span class="kicker">The safety layer</span>
+              <strong>Governance</strong>
+              <p>Specs, registries, health checks, and release gates keep boundaries explicit. Optional services extend the system without becoming required for the local core.</p>
             </div>
+          </div>
+          <div class="surface-flow" aria-label="How the surfaces work together">
+            <strong>Vault OS</strong><span>stores knowledge</span><span>→</span>
+            <strong class="gold">SuperDocs</strong><span>defines project truth</span><span>→</span>
+            <strong>Agent OS</strong><span>brings the right context into work</span>
           </div>
         </div>
 
         <div class="optional rl-glass dense rl-glass-edge">
-          <h3>Optional capabilities — local core remains complete</h3>
+          <h3>Optional capabilities. Local core remains complete.</h3>
           <div class="opt-row">
             <div class="opt-chip rl-glass dense">
               <strong>Pinecone</strong>
@@ -1138,7 +1257,7 @@
       </div>
 
       <div class="flow">
-        <h3>Cold path — no cloud keys required</h3>
+        <h3>Cold path. No cloud keys required.</h3>
         <div class="steps">
           <span class="step rl-glass dense"><em>1</em> install</span>
           <span class="step-arrow">→</span>
@@ -1152,8 +1271,8 @@
     </div>
 
     <footer>
-      Agent OS by Regime Lab · liquid-glass theme · claim-safe open-core visual<br />
-      Logo is display-only via product CDN — not shipped or licensed with this repo (see BRAND.md)<br />
+      Agent OS by Regime Lab · liquid glass theme · claim safe open source visual<br />
+      Logo is display only via product CDN. It is not shipped or licensed with this repo (see BRAND.md)<br />
       Open in a browser with network · Screenshot · or Print → Save as PDF<br />
       <code>docs/assets/oss-architecture-diagram.html</code>
     </footer>
