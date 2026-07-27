@@ -1,0 +1,11 @@
+{
+  "rules": [
+    {
+      "name": "reviewer-insights",
+      "source_agent_role": ["reviewer", "code_reviewer"],
+      "boundary_kind": ["brain"],
+      "kind": ["insight"],
+      "min_evidence_refs": 2
+    }
+  ]
+}

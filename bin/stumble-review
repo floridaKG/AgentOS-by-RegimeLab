@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# stumble-review — Review and decide on triaged stumbles.
+# Usage: stumble-review list|show|decide|summary|export ...
+set -euo pipefail
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+AGENT_OS_HOME="${AGENT_OS_HOME:-$(dirname "$SCRIPT_DIR")}"
+exec python3 "$AGENT_OS_HOME/scripts/stumble-review.py" "$@"

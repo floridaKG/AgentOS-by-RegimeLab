@@ -1,0 +1,89 @@
+# Public Agent OS workflows registry.
+# Only workflows available to public users are listed here.
+# Last rebuilt: 2026-06-25
+
+workflows:
+  - name: session-start
+    description: Mandatory boot sequence for every agent session
+    triggered_by: agent-boot
+    steps:
+      - Read AGENTS.md for entrypoint routing
+      - Run bash $AGENT_OS_HOME/scripts/agent-os-boot.sh for surface and state
+      - Read required documents in order
+    status: active
+
+  - name: lesson-capture
+    description: Capture reusable lessons from agent work
+    triggered_by: /lesson
+    steps:
+      - Identify lesson scope (cockpit, workspace, cross-agent)
+      - Write to short-term memory via memory-st
+      - Promote to long-term if validated
+    status: active
+
+  - name: memory-recall
+    description: Search across memory tiers for relevant past knowledge
+    triggered_by: /recall
+    steps:
+      - Query short-term SQLite (FTS5)
+      - Query Pinecone semantic search (if configured)
+      - Query Neo4j graph (if configured)
+      - Synthesize and return results
+    status: active
+
+  - name: skill-optimization
+    description: Discover and load relevant skills efficiently
+    triggered_by: skill-rank, skill-pack
+    steps:
+      - Rank skills by task relevance
+      - Extract bounded context packs
+      - Load only actionable sections
+    status: active
+
+  - name: doc-audit
+    description: Audit documentation for quality and consistency
+    triggered_by: /doc-audit
+    steps:
+      - Scan for drift, duplication, staleness
+      - Check registry consistency
+      - Report findings
+    status: active
+
+  - name: moe-panel
+    description: Run multiple configured providers in parallel and synthesize results
+    triggered_by: /moe, team fire
+    steps:
+      - Resolve the requested panel and model aliases
+      - Dispatch panel members with bounded time and cost settings
+      - Preserve disagreements and emit replayable run artifacts
+    status: active
+
+  - name: multi-agent-review
+    description: Run provider-diverse swarm, read-only audit, collaboration, or red-team workflows
+    triggered_by: /swarm, /redteam, multi-agent review
+    steps:
+      - Choose the lowest-cost workflow that satisfies the request
+      - Dispatch configured providers or agents
+      - Synthesize results while preserving provider identity
+    status: active
+
+  - name: stumble-triage
+    description: Deduplicate and classify stumble records into actionable clusters
+    triggered_by: stumble-triage, daily cron
+    steps:
+      - Run stumble-triage to cluster stumbles by fingerprint
+      - Review systemic and repeat clusters via stumble-review
+      - Decide fix, guardrail, document, or ignore per cluster
+      - Clean resolved clusters via stumble-cleanup
+    status: active
+
+  - name: self-learning
+    description: Close the feedback loop — capture stumbles, triage, review, promote learnings
+    triggered_by: daily doctor, stumble-triage, approved stumble proposal
+    steps:
+      - Triage stumbles via stumble-triage
+      - Review clusters via stumble-review
+      - Apply approved decisions via stumble-apply-decision.py
+      - Promote resolved lessons via memory-promote
+      - Clean stale reports via stumble-cleanup
+    status: active

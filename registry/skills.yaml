@@ -1,0 +1,124 @@
+# Public Agent OS skills registry.
+# Only skills physically included in this distribution may be listed here.
+# Last rebuilt: 2026-06-25
+
+skills:
+  - name: acp
+    tier: os-shared
+    status: active
+    path: $AGENT_OS_HOME/skills/shared/acp/SKILL.md
+    trigger: [/acp, acp-task, dispatch task, delegate to]
+    description: Route work to configured agents and workspaces through ACP.
+    user_invocable: true
+
+  - name: recall
+    tier: os-shared
+    status: active
+    path: $AGENT_OS_HOME/skills/shared/recall/SKILL.md
+    trigger: [/recall, recall, find lessons]
+    description: Search configured memory tiers before starting related work.
+    user_invocable: true
+
+  - name: lesson
+    tier: os-shared
+    status: active
+    path: $AGENT_OS_HOME/skills/shared/lesson/SKILL.md
+    trigger: [/lesson, capture this lesson, remember this]
+    description: Capture a reusable lesson and route it to durable memory.
+    user_invocable: true
+
+  - name: digest
+    tier: os-shared
+    status: active
+    path: $AGENT_OS_HOME/skills/shared/digest/SKILL.md
+    trigger: [/digest, show me what was learned, summary of recent lessons]
+    description: Print a human-readable summary of recent memory activity.
+    user_invocable: true
+
+  - name: doc-audit
+    tier: os-shared
+    status: active
+    path: $AGENT_OS_HOME/skills/shared/doc-audit/SKILL.md
+    trigger: [/doc-audit, audit docs, check doc quality]
+    description: Audit documentation for drift, duplication, and staleness.
+    user_invocable: true
+
+  - name: skill-optimizer
+    tier: os-shared
+    status: active
+    path: $AGENT_OS_HOME/skills/shared/skill-optimizer/SKILL.md
+    trigger: [skill-rank, skill-pack, skill-context]
+    description: Discover relevant skills, extract bounded context packs, optimize token usage.
+    user_invocable: true
+
+  - name: upward-handoff
+    tier: os-shared
+    status: active
+    path: $AGENT_OS_HOME/skills/shared/upward-handoff/SKILL.md
+    trigger: [/handoff, hand off to higher model, upward review]
+    description: Prepare findings for a higher-reasoning model to review.
+    user_invocable: true
+
+  - name: changes-review
+    tier: os-shared
+    status: active
+    path: $AGENT_OS_HOME/skills/shared/changes-review/SKILL.md
+    trigger: [/changes-review, audit changes, trace fixes]
+    description: Produce a traceable audit document mapping changes to source findings.
+    user_invocable: true
+
+  - name: moe
+    tier: os-shared
+    status: active
+    path: $AGENT_OS_HOME/skills/shared/moe/SKILL.md
+    trigger: [/moe, moe, fire a panel, mixture of experts]
+    description: Run configurable multi-provider Mixture-of-Experts panels.
+    user_invocable: true
+
+  - name: agent-workflows
+    tier: os-shared
+    status: active
+    path: $AGENT_OS_HOME/skills/shared/agent-workflows/SKILL.md
+    trigger: [/swarm, /council, /redteam, multi-agent review]
+    description: Choose and run parallel, adversarial, and iterative agent workflows.
+    user_invocable: true
+
+  - name: sidecar
+    tier: os-shared
+    status: active
+    path: $AGENT_OS_HOME/skills/shared/sidecar/SKILL.md
+    trigger: [/sidecar, spawn a sidecar, drive a sidecar]
+    description: Pair a higher-reasoning DRIVER agent with a persistent execution partner (the sidecar).
+    user_invocable: true
+
+  - name: sidecar-heavy
+    tier: os-shared
+    status: active
+    path: $AGENT_OS_HOME/skills/shared/sidecar-heavy/SKILL.md
+    trigger: [/sidecar-heavy, consult the heavy, spawn sidecar heavy, get deep reasoning, heavy thinking, think through this, deep dive, need a plan]
+    description: Spawn a pure-reasoning advisor (heavy model) for deep thinking, plans, and guidance. The heavy sidecar never executes — it only reasons.
+    user_invocable: true
+
+  - name: adversarial-review
+    tier: os-shared
+    status: active
+    path: $AGENT_OS_HOME/skills/shared/adversarial-review/SKILL.md
+    trigger: [/adversarial-review, critique this, poke holes, find the flaws]
+    description: Single-shot adversarial critique of specs, decisions, or code via ACP-dispatched reviewer.
+    user_invocable: true
+
+  - name: codegraph-tools
+    tier: os-shared
+    status: active
+    path: $AGENT_OS_HOME/skills/shared/codegraph-tools/SKILL.md
+    trigger: [codegraph, callers, callees, impact analysis, trace, structural query]
+    description: Use CodeGraph for structural code queries instead of multi-call grep/read chains.
+    user_invocable: true
+
+  - name: umbrella-refactor
+    tier: os-shared
+    status: active
+    path: $AGENT_OS_HOME/skills/shared/umbrella-refactor/SKILL.md
+    trigger: [/umbrella-refactor, master plan, multi-spec refactor, create umbrella]
+    description: Manage large refactors via a master umbrella doc linking to individual spec files.
+    user_invocable: true

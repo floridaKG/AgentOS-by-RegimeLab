@@ -1,0 +1,60 @@
+# Portable MOE examples. Users should replace provider/model values with IDs
+# available in their own Claude, Codex, OpenCode, Pi, or compatible providers.
+
+[panel.quick]
+references = ["opencode/default", "openrouter/default"]
+judge = "openrouter/default"
+reasoning = "low"
+min_successful = 2
+degrade_single = true
+cost = "cheap"
+max_cost_usd = 0.10
+per_model_timeout_s = 180
+max_output_tokens = 512
+output_shape = "verdict_with_disagreements"
+
+[panel.swarm]
+members = ["claude default", "codex default"]
+cost = "paid"
+max_cost_usd = 5.00
+min_successful = 2
+per_model_timeout_s = 300
+max_output_tokens = 1024
+output_shape = "verdict_with_disagreements"
+write_mode = "orchestrator-only"
+
+[panel.swarm_readonly]
+members = ["claude default", "codex default"]
+judge = "openrouter/default"
+cost = "paid"
+max_cost_usd = 5.00
+min_successful = 2
+per_model_timeout_s = 300
+max_output_tokens = 1024
+output_shape = "ranked_issues"
+write_authority = false
+
+[panel.persistent_collaborate]
+members = ["claude default", "codex default"]
+topology = "iterative"
+max_turns = 4
+convergence_judge = "openrouter/default"
+reviewer = "openrouter/default"
+context_guard_chars = 12000
+context_keep_last_turns = 2
+per_model_timeout_s = 180
+max_cost_usd = 10.00
+output_shape = "iterative_synthesis"
+
+[panel.persistent_redteam]
+proposer = "claude default"
+attacker = "codex default"
+adjudicator = "claude default"
+topology = "iterative"
+max_turns = 4
+convergence_judge = "openrouter/default"
+context_guard_chars = 12000
+context_keep_last_turns = 2
+per_model_timeout_s = 180
+max_cost_usd = 10.00
+output_shape = "go_no_go_verdict"

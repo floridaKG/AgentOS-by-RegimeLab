@@ -1,0 +1,44 @@
+version: 1
+workspace_id: vault
+workspace_name: Knowledge Vault
+boot:
+  canonical_boot_files:
+    - $VAULT_PATH/AGENTS.md
+    - $VAULT_PATH/BOOT.md
+tooling:
+  verify_commands:
+    - python3 -m py_compile ops/scripts
+skills:
+  recommended:
+    - none
+bundles:
+  default:
+    docs:
+      - $VAULT_PATH/AGENTS.md
+      - $VAULT_PATH/BOOT.md
+    skills: []
+  EXPLORE:
+    docs:
+      - $VAULT_PATH/BOOT.md
+      - $VAULT_PATH/registry/workflows.yaml
+    skills: []
+  SPEC:
+    docs:
+      - $VAULT_PATH/BOOT.md
+      - $VAULT_PATH/registry/workflows.yaml
+    skills: []
+    notes:
+      - Route through the correct vault workflow instead of inventing a parallel plan format.
+  IMPLEMENT:
+    docs:
+      - $VAULT_PATH/AGENTS.md
+    skills: []
+  BUG:
+    docs:
+      - $VAULT_PATH/BOOT.md
+    skills: []
+  DOCS:
+    docs:
+      - $VAULT_PATH/BOOT.md
+      - $VAULT_PATH/registry/skills.yaml
+    skills: []

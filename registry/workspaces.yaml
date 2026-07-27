@@ -1,0 +1,26 @@
+# Public Agent OS workspaces registry.
+# Workspaces are user-created. This registry provides the template schema.
+# Last rebuilt: 2026-07-13
+
+# ── Template ────────────────────────────────────────────────────────────
+# To add a workspace, copy this template and customize:
+#
+# - id: my-project
+#   name: My Project
+#   root: $AGENT_OS_HOME/projects/my-project
+#   boot_doc: AGENTS.md
+#   skills_prefix: my-project
+#   lessons_path: docs/LESSONS.md
+#
+# Fields:
+#   id             — Short, unique identifier (lowercase, hyphens).
+#   name           — Human-readable display name.
+#   root           — Absolute path to the project root.
+#   boot_doc       — File agents read first when entering this workspace.
+#   skills_prefix  — Prefix for workspace-specific skill names.
+#   lessons_path   — Path to the lessons file for this workspace.
+#
+# Workspaces are created and managed by the user. Agent OS does not ship
+# with pre-configured workspaces.
+
+workspaces: []

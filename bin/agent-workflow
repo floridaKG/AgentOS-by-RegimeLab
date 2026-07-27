@@ -1,0 +1,192 @@
+#!/usr/bin/env bash
+# Unified entry point for all agent workflows.
+# Usage:
+#   agent-workflow [--fast] [--strict] swarm <task_file> [n_agents]
+#   agent-workflow [--fast] [--strict] council <problem_file>
+#   agent-workflow [--fast] [--strict] escalate <task_file>
+#   agent-workflow [--fast] [--strict] orchestrate <goal_file> [max_fix_iterations]
+#   agent-workflow dialogue <role_a> <role_b> <topic_file> [turns]
+#   agent-workflow postmortem <run-id>
+#   agent-workflow roles        -- print current role assignments
+#   agent-workflow packet <packet.json> <swarm|council|orchestrate>  -- run with packet contract
+
+WORKFLOWS_DIR="$HOME/.config/agent-workflows"
+
+# ---------------------------------------------------------------------------
+# Packet-mode loading: if first arg is a .json file, parse it and export vars.
+# ---------------------------------------------------------------------------
+_load_packet() {
+    local pkt="$1"
+    if [ -f "$pkt" ] && [[ "$pkt" == *.json ]]; then
+        local fields
+        fields=$(python3 - "$pkt" <<'PY'
+import json
+import shlex
+import sys
+
+p = json.load(open(sys.argv[1]))
+for k in ['workflow_name', 'run_id', 'workspace', 'goal_file', 'objective',
+          'scope', 'boundaries', 'input_files', 'output_files',
+          'success_criteria', 'ownership', 'prompt_hash']:
+    v = p.get(k, '')
+    print(f"WF_{k.upper()}={shlex.quote(str(v))}")
+PY
+) && eval "$fields"
+        export WORKFLOW_NAME="$WF_WORKFLOW_NAME"
+        export WF_RUN_ID="$WF_RUN_ID"
+        export WF_WORKSPACE="$WF_WORKSPACE"
+        export WF_GOAL_FILE="$WF_GOAL_FILE"
+        export WF_OBJECTIVE="$WF_OBJECTIVE"
+        export WF_SCOPE="$WF_SCOPE"
+        export WF_BOUNDARIES="$WF_BOUNDARIES"
+        export WF_INPUT_FILES="$WF_INPUT_FILES"
+        export WF_OUTPUT_FILES="$WF_OUTPUT_FILES"
+        export WF_SUCCESS_CRITERIA="$WF_SUCCESS_CRITERIA"
+        export WF_OWNERSHIP="$WF_OWNERSHIP"
+        export WF_PROMPT_HASH="$WF_PROMPT_HASH"
+        return 0
+    fi
+    return 1
+}
+
+# Parse global flags
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --fast) export AGENT_FAST=1; shift ;;
+        --strict) export AGENT_STRICT=1; shift ;;
+        *) break ;;
+    esac
+done
+
+# If first positional is a JSON file, enter packet mode.
+if [ $# -gt 0 ] && [[ "$1" == *.json ]]; then
+    PACKET_FILE="$1"
+    if _load_packet "$PACKET_FILE"; then
+        shift
+    fi
+fi
+
+COMMAND="${1:-}"
+
+case "$COMMAND" in
+    swarm)
+        bash "$WORKFLOWS_DIR/swarm.sh" "${@:2}"
+        ;;
+    council)
+        bash "$WORKFLOWS_DIR/council.sh" "${@:2}"
+        ;;
+    escalate)
+        bash "$WORKFLOWS_DIR/escalate.sh" "${@:2}"
+        ;;
+    orchestrate)
+        bash "$WORKFLOWS_DIR/orchestrate.sh" "${@:2}"
+        ;;
+    dialogue)
+        bash "$WORKFLOWS_DIR/dialogue.sh" "${@:2}"
+        ;;
+    redteam)
+        bash "$WORKFLOWS_DIR/redteam.sh" "${@:2}"
+        ;;
+    postmortem)
+        RUN_ID="${2:-}"
+        if [ -z "$RUN_ID" ]; then
+            echo "Usage: agent-workflow postmortem <run-id>"
+            exit 1
+        fi
+        CACHE_DIR="${AGENT_WORKFLOW_TMPDIR:-$HOME/.cache/agent-workflows}"
+        RUN_DIR="$CACHE_DIR/runs/$RUN_ID"
+        if [ ! -d "$RUN_DIR" ]; then
+            echo "Error: run directory not found: $RUN_DIR" >&2
+            exit 1
+        fi
+        echo "=== Run $RUN_ID ==="
+        echo ""
+        echo "--- Files ---"
+        ls -la "$RUN_DIR"
+        echo ""
+        RUN_LOG="${RUN_LOG:-$HOME/.cache/agent-workflows/run-log.jsonl}"
+        if [ -f "$RUN_LOG" ]; then
+            PM_DATA=$(python3 -c "
+import json, sys
+run_id = sys.argv[1]
+log_path = sys.argv[2]
+lines = []
+with open(log_path) as f:
+    for raw in f:
+        try:
+            row = json.loads(raw)
+            if row.get('title', '').find(run_id) >= 0:
+                lines.append(row)
+        except json.JSONDecodeError:
+            pass
+total = len(lines)
+failures = [l for l in lines if l.get('status') != 'ok']
+print(f'TOTAL={total}')
+print(f'FAILURES={len(failures)}')
+for f in failures:
+    role = f.get('role', '?')
+    prov = f.get('provider', '?')
+    model = f.get('model', '?')
+    status = f.get('status', '?')
+    dur = f.get('duration_s', '?')
+    print(f'ENTRY\t{role}\t{prov}\t{model}\t{status}\t{dur}')
+" "$RUN_ID" "$RUN_LOG")
+            TOTAL=$(echo "$PM_DATA" | grep '^TOTAL=' | sed 's/^TOTAL=//')
+            FAILURES=$(echo "$PM_DATA" | grep '^FAILURES=' | sed 's/^FAILURES=//')
+            FALLBACKS=$(echo "$PM_DATA" | grep '^ENTRY' | awk -F'\t' '$5 != "exec_failed" {c++} END {print c+0}')
+            echo "$PM_DATA" | grep '^ENTRY' | while IFS='	' read -r _ role prov model status dur; do
+                # Stumble logging: configure a log-stumble command in your
+                # environment to record workflow failures. Skipped when
+                # unavailable (zero-cost fallback for OSS users).
+                if command -v log-stumble >/dev/null 2>&1; then
+                    log-stumble cockpit "postmortem $RUN_ID: $role $prov:$model got $status after ${dur}s" \
+                        --source-ref "agent-workflow:postmortem-$RUN_ID"
+                fi
+            done
+            echo ""
+            echo "--- Summary ---"
+            echo "Total attempts: $TOTAL"
+            echo "Failures: $FAILURES"
+            echo "Fallbacks: $FALLBACKS"
+            if [ "$TOTAL" -gt 0 ] && [ "$FAILURES" -eq 0 ]; then
+                echo "Final: ok"
+            elif [ "$TOTAL" -gt 0 ]; then
+                echo "Final: $FAILURES failures of $TOTAL attempts"
+            else
+                echo "Final: unknown (no attempts logged for this run-id in run-log.jsonl)"
+            fi
+        else
+            echo "--- Summary ---"
+            echo "Total attempts: 0 (run-log.jsonl not found)"
+            echo "Failures: 0"
+            echo "Fallbacks: 0"
+            echo "Final: no log data"
+        fi
+        ;;
+    roles)
+        eval "$($WORKFLOWS_DIR/load-roles.sh)"
+        echo "Explorer:      $ROLE_EXPLORER"
+        echo "Architect:     $ROLE_ARCHITECT"
+        echo "Executor:      $ROLE_EXECUTOR"
+        echo "Reviewer:      $ROLE_REVIEWER"
+        echo "Code Reviewer: $ROLE_CODE_REVIEWER"
+        echo "Escalation:    $ROLE_ESCALATION ($PROVIDER_ESCALATION)"
+        ;;
+    *)
+        echo "Usage: agent-workflow [--fast] [--strict] <swarm|council|escalate|orchestrate|dialogue|redteam|postmortem|roles> [args]"
+        echo ""
+        echo "  --fast                    Skip optional steps (AGENT_FAST=1)"
+        echo "  --strict                  Require PASS: marker (AGENT_STRICT=1)"
+        echo "  swarm <task_file> [n_agents]          Parallel agents attack problem, reviewer synthesizes"
+        echo "  council <problem_file>                3 independent opinions, moderator surfaces disagreements"
+        echo "  escalate <task_file>                  Free agent attempts, escalates to paid if stuck"
+        echo "  orchestrate <goal_file> [max_fixes]   Full pipeline: explore->architect->execute->review->fix"
+        echo "  dialogue <role_a> <role_b> <topic_file> [turns]  Two agents alternate on a topic, reviewer synthesizes"
+        echo "  postmortem <run-id>                    Analyze a workflow run"
+        echo "  roles                                 Show current model assignments"
+        echo ""
+        echo "All workflow artifacts written to ~/.cache/agent-workflows/runs/{id}/"
+        echo "Edit ~/.config/agent-workflows/roles.toml to swap models."
+        exit 1
+        ;;
+esac

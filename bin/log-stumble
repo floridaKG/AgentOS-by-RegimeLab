@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+# log-stumble — Record stumbles to Agent OS short-term memory.
+#
+# Portable OSS version. Finds memory-st relative to its own location,
+# with $AGENT_OS_HOME/bin/memory-st as fallback.
+#
+# Usage:
+#   log-stumble <workspace> "<summary>" [--source-ref <ref>] [--content <text>]
+#
+# Exit 0 on success, non-zero on failure. Output is JSON from memory-st.
+
+set -euo pipefail
+
+# ── Locate memory-st relative to this script ──────────────────────────────
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+MEMORY_ST="${SCRIPT_DIR}/memory-st"
+if [ ! -x "$MEMORY_ST" ] && [ -n "${AGENT_OS_HOME:-}" ]; then
+    MEMORY_ST="${AGENT_OS_HOME}/bin/memory-st"
+fi
+
+WORKSPACE="${1:-}"
+SUMMARY="${2:-}"
+
+if [ -z "$WORKSPACE" ] || [ -z "$SUMMARY" ]; then
+    echo "Usage: $(basename "$0") <workspace> \"<summary>\" [--source-ref <ref>] [--content <text>]" >&2
+    exit 1
+fi
+
+shift 2
+
+# Parse optional flags
+SOURCE_REF="cli:log-stumble"
+CONTENT=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --source-ref)
+            SOURCE_REF="$2"
+            shift 2
+            ;;
+        --content)
+            CONTENT="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown flag: $1" >&2
+            exit 1
+            ;;
+    esac
+done
+
+# ── Garbage rejection (defense-in-depth) ──────────────────────────────────
+# Reject summaries that are headers, placeholders, line-num prefix leaks, or too short.
+_SUMMARY_NORM=$(echo "$SUMMARY" | tr 'A-Z' 'a-z' | tr -d '[:space:].,;:')
+case "$_SUMMARY_NORM" in
+  ""|none|n/a|na|nothing|nostumbles|noneencountered|stumbles|stumble|blocked)
+    echo "rejected garbage stumble (placeholder): $SUMMARY" >&2; exit 0 ;;
+esac
+if echo "$SUMMARY" | grep -qiE '^\s*STUMBLES?\s*:'; then
+    echo "rejected garbage stumble (header): $SUMMARY" >&2; exit 0
+fi
+if echo "$SUMMARY" | grep -qiE '^(explicit|auto):\s*[0-9]+:'; then
+    echo "rejected garbage stumble (line-num prefix): $SUMMARY" >&2; exit 0
+fi
+if [ ${#SUMMARY} -lt 12 ]; then
+    echo "rejected garbage stumble (too short): $SUMMARY" >&2; exit 0
+fi
+
+# Generate fingerprint (same algorithm as stumble-triage.py)
+FINGERPRINT=$(echo -n "$SUMMARY" | python3 -c "
+import sys, hashlib, re
+s = sys.stdin.read().lower().strip()
+# Normalize: collapse whitespace, normalize git commands, normalize error types
+s = ' '.join(s.split())
+s = re.sub(r'\\bgit\\s+(push|pull|fetch|clone|checkout|merge|rebase|commit|add|status|diff)\\b', r'git-\\1', s)
+s = re.sub(r'\\b(rejected|failed|error|denied|timeout|refused|not found|missing|broken)\\b', '<error>', s)
+s = re.sub(r'^(auto:\\s*|explicit:\\s*)', '', s)
+print(hashlib.sha256(s.encode()).hexdigest()[:16])
+")
+
+# Detect agent ID from environment
+AGENT_ID="${AGENT_ID:-${ACP_AGENT_ID:-cli}}"
+
+# Use real run ID if available, otherwise generate one
+RUN_ID="${RUN_ID:-log-stumble-$(date +%Y%m%d-%H%M%S)}"
+
+# ── Temp directory (AGENTS.md: No Temp Writes — use secure state dir) ──────
+# AGENT_OS_HOME is expected to be set; compute from script location as fallback.
+_AOH="${AGENT_OS_HOME:-$(dirname "$(dirname "$(readlink -f "$0")")")}"
+_SECURE_TMP="${_AOH}/.local/state/tmp"
+_TMPDIR="${TMPDIR:-$_SECURE_TMP}"
+mkdir -p "$_TMPDIR"
+CONTENT_FILE=$(mktemp "$_TMPDIR/log-stumble-XXXXXX.txt")
+if [ -n "$CONTENT" ]; then
+    echo "$CONTENT" > "$CONTENT_FILE"
+else
+    echo "$SUMMARY" > "$CONTENT_FILE"
+fi
+
+# Stumbles are intended to cross agent boundaries, so write them at brain tier.
+# The source ref is the evidence pointer required for brain-tier records.
+CMD=(
+    "$MEMORY_ST" "write"
+    --run-id "$RUN_ID"
+    --agent-id "$AGENT_ID"
+    --workspace "$WORKSPACE"
+    --intent "STUMBLE"
+    --kind "stumble"
+    --summary "$SUMMARY"
+    --source-ref "$SOURCE_REF"
+    --fingerprint "$FINGERPRINT"
+    --boundary-kind "session"
+    --evidence-ref "$SOURCE_REF"
+)
+
+if [ -n "$CONTENT_FILE" ]; then
+    CMD+=(--content-file "$CONTENT_FILE")
+fi
+
+# Execute
+"${CMD[@]}"
+
+# Archive temp content for auditability; cleanup is handled by orchestrator policy.
+ARCHIVE_DIR="$_TMPDIR/agent-os-log-stumble/archive"
+mkdir -p "$ARCHIVE_DIR"
+mv "$CONTENT_FILE" "$ARCHIVE_DIR/$(basename "$CONTENT_FILE").$(date +%Y%m%d%H%M%S)" 2>/dev/null || true

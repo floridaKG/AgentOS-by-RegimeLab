@@ -1,0 +1,320 @@
+#!/usr/bin/env bash
+# skill-pack: Extract actionable sections from SKILL.md files
+# Resolves skill names to SKILL.md paths and extracts relevant sections
+
+set -euo pipefail
+
+log_usage() {
+  local f="$HOME/.cache/agent-workflows/skill-usage.jsonl"
+  mkdir -p "$(dirname "$f")" 2>/dev/null || return 0
+  printf '{"timestamp":"%s","skill_id":"%s","agent":"%s","workspace":"%s","success":%s,"duration_s":0,"notes":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$(a="${AI_AGENT:+${AI_AGENT%%_*}}"; echo "${a:-cli}")" "$PWD" "$2" "$3" >> "$f" 2>/dev/null || true
+}
+
+# Directories to search for skills
+SKILL_DIRS=(
+  "$AGENT_OS_HOME/skills/shared"
+  "$AGENT_OS_HOME/${AGENT_STATE_DIR:-.agent-os/state}/skills"
+  "$AGENT_OS_HOME/.claude/skills"
+)
+
+usage() {
+  echo "Usage: skill-pack <skill-name> [--list-sections] [--section <heading>] [--budget <bytes>]"
+  echo ""
+  echo "Extract actionable sections from SKILL.md files with token-bounded output."
+  echo ""
+  echo "Options:"
+  echo "  --list-sections    List all ## headings in the skill file"
+  echo "  --section <heading> Extract a specific section by heading"
+  echo "  --budget <bytes>   Truncate output to this byte limit"
+  echo ""
+  echo "Examples:"
+  echo "  skill-pack recall --list-sections"
+  echo "  skill-pack memory-stack --budget 4000"
+  echo "  skill-pack acp-delegation --section 'How It Works'"
+  exit 1
+}
+
+# Find SKILL.md for a skill name
+find_skill() {
+  local name="$1"
+  
+  # Search agent-os/skills/shared/<name>/SKILL.md
+  if [[ -f "$AGENT_OS_HOME/skills/shared/${name}/SKILL.md" ]]; then
+    echo "$AGENT_OS_HOME/skills/shared/${name}/SKILL.md"
+    return 0
+  fi
+  
+  # Search skills/**/<name>/SKILL.md (recursive)
+  local found
+  found=$(find $AGENT_OS_HOME/${AGENT_STATE_DIR:-.agent-os/state}/skills -type f -name "SKILL.md" -path "*/${name}/SKILL.md" 2>/dev/null | head -1)
+  if [[ -n "$found" ]]; then
+    echo "$found"
+    return 0
+  fi
+  
+  # Search $AGENT_OS_HOME/.claude/skills/<name>/SKILL.md
+  if [[ -f "$AGENT_OS_HOME/.claude/skills/${name}/SKILL.md" ]]; then
+    echo "$AGENT_OS_HOME/.claude/skills/${name}/SKILL.md"
+    return 0
+  fi
+  
+  return 1
+}
+
+# List sections in a file
+list_sections() {
+  local file="$1"
+  local line_num=1
+  local byte_offset=0
+  local in_section=0
+  local section_start=0
+  
+  while IFS= read -r line; do
+    if [[ "$line" =~ ^##\  ]]; then
+      if [[ "$in_section" -eq 1 ]]; then
+        local section_bytes=$(( byte_offset - section_start ))
+        echo "Line ${section_start_line}: ${section_name} (${section_bytes} bytes)"
+      fi
+      section_name="$line"
+      section_start_line="$line_num"
+      section_start="$byte_offset"
+      in_section=1
+    fi
+    byte_offset=$(( byte_offset + ${#line} + 1 ))
+    line_num=$(( line_num + 1 ))
+  done < "$file"
+  
+  # Handle last section
+  if [[ "$in_section" -eq 1 ]]; then
+    local section_bytes=$(( byte_offset - section_start ))
+    echo "Line ${section_start_line}: ${section_name} (${section_bytes} bytes)"
+  fi
+}
+
+# Extract a specific section
+extract_section() {
+  local file="$1"
+  local heading="$2"
+  local output=""
+  local in_section=0
+  local section_found=0
+  
+  # Convert heading to lowercase for case-insensitive matching
+  local heading_lower
+  heading_lower=$(echo "$heading" | tr '[:upper:]' '[:lower:]')
+  
+  while IFS= read -r line; do
+    if [[ "$line" =~ ^##\  ]]; then
+      local line_lower
+      line_lower=$(echo "$line" | tr '[:upper:]' '[:lower:]')
+      if [[ "$line_lower" == *"$heading_lower"* ]]; then
+        in_section=1
+        section_found=1
+        output+="$line"$'\n'
+      elif [[ "$in_section" -eq 1 ]]; then
+        break
+      fi
+    elif [[ "$in_section" -eq 1 ]]; then
+      output+="$line"$'\n'
+    fi
+  done < "$file"
+  
+  if [[ "$section_found" -eq 1 ]]; then
+    echo -n "$output"
+  else
+    echo "Section not found: $heading" >&2
+    return 1
+  fi
+}
+
+# Extract the "actionable" content using fallback chain
+extract_actionable() {
+  local file="$1"
+  local output=""
+  local in_section=0
+  local section_name=""
+  local found_section=0
+  
+  # Fallback chain: Execute/Execution -> How To Invoke -> Usage -> Quick Reference -> first 2000 bytes
+  local fallback_headings=(
+    "## Execute"
+    "## Execution"
+    "## How To Invoke"
+    "## Usage"
+    "## Quick Reference"
+    "## Core Commands"
+    "## Commands"
+  )
+  
+  # First try to find any of the fallback sections
+  for heading in "${fallback_headings[@]}"; do
+    local heading_lower
+    heading_lower=$(echo "$heading" | tr '[:upper:]' '[:lower:]')
+    
+    in_section=0
+    output=""
+    while IFS= read -r line; do
+      if [[ "$line" =~ ^##\  ]]; then
+        local line_lower
+        line_lower=$(echo "$line" | tr '[:upper:]' '[:lower:]')
+        if [[ "$line_lower" == *"${heading_lower:3}"* ]]; then
+          in_section=1
+          section_name="$line"
+          output+="$line"$'\n'
+        elif [[ "$in_section" -eq 1 ]]; then
+          break
+        fi
+      elif [[ "$in_section" -eq 1 ]]; then
+        output+="$line"$'\n'
+      fi
+    done < "$file"
+    
+    if [[ "$in_section" -eq 1 && -n "$output" ]]; then
+      echo "$section_name"
+      echo -n "$output"
+      return 0
+    fi
+  done
+  
+  # Fallback: first 2000 bytes
+  echo "First 2000 bytes"
+  head -c 2000 "$file"
+  return 0
+}
+
+# Apply budget cap
+apply_budget() {
+  local content="$1"
+  local budget="$2"
+  local content_bytes
+  content_bytes=$(echo -n "$content" | wc -c)
+  
+  if [[ "$content_bytes" -le "$budget" ]]; then
+    echo -n "$content"
+  else
+    echo -n "$content" | head -c "$budget"
+    echo ""
+    echo ""
+    echo "## TRUNCATED"
+    echo "Original size: ${content_bytes} bytes, Budget: ${budget} bytes, Cut: $(( content_bytes - budget )) bytes"
+  fi
+}
+
+# Main
+main() {
+  if [[ $# -lt 1 ]]; then
+    usage
+  fi
+  
+  local skill_name=""
+  local list_sections=0
+  local section=""
+  local budget=0
+  
+  # Parse arguments
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --list-sections)
+        list_sections=1
+        shift
+        ;;
+      --section)
+        section="$2"
+        shift 2
+        ;;
+      --budget)
+        budget="$2"
+        shift 2
+        ;;
+      *)
+        if [[ -z "$skill_name" ]]; then
+          skill_name="$1"
+        else
+          echo "Error: Unknown argument: $1" >&2
+          usage
+        fi
+        shift
+        ;;
+    esac
+  done
+  
+  if [[ -z "$skill_name" ]]; then
+    echo "Error: Skill name is required" >&2
+    usage
+  fi
+  
+  # Find the skill file
+  local skill_path
+  if ! skill_path=$(find_skill "$skill_name"); then
+    echo "Error: Skill '${skill_name}' not found in any search path" >&2
+    echo "Searched paths:" >&2
+    echo "  $AGENT_OS_HOME/skills/shared/${skill_name}/SKILL.md" >&2
+    echo "  $AGENT_OS_HOME/${AGENT_STATE_DIR:-.agent-os/state}/skills/**/${skill_name}/SKILL.md" >&2
+    echo "  $AGENT_OS_HOME/.claude/skills/${skill_name}/SKILL.md" >&2
+    echo "" >&2
+    echo "Available skills in agent-os/skills/shared/:" >&2
+    ls -1 $AGENT_OS_HOME/skills/shared/ 2>/dev/null | head -20 >&2
+    echo "" >&2
+    echo "Available skills in state/skills/:" >&2
+    find $AGENT_OS_HOME/${AGENT_STATE_DIR:-.agent-os/state}/skills -name "SKILL.md" -exec basename $(dirname $(dirname {})) \; 2>/dev/null | sort | uniq | head -20 >&2
+    log_usage "skill-pack:${skill_name}" 0 "not-found"
+    exit 1
+  fi
+  
+  # Get original size
+  local original_size
+  original_size=$(wc -c < "$skill_path")
+  
+  # Handle --list-sections
+  if [[ "$list_sections" -eq 1 ]]; then
+    echo "=== SKILL PACK ==="
+    echo "Skill: ${skill_name}"
+    echo "Source: ${skill_path}"
+    echo "Original size: ${original_size} bytes"
+    echo "=== BEGIN ==="
+    list_sections "$skill_path"
+    echo "=== END ==="
+    log_usage "skill-pack:${skill_name}" 1 "list-sections"
+    return 0
+  fi
+  
+  # Extract content
+  local extracted_content=""
+  local section_name="full"
+  
+  if [[ -n "$section" ]]; then
+    extracted_content=$(extract_section "$skill_path" "$section")
+    section_name="$section"
+  else
+    # Capture once to avoid SIGPIPE with set -o pipefail on large files
+    local all_output
+    all_output=$(extract_actionable "$skill_path")
+    section_name=$(echo "$all_output" | head -1)
+    extracted_content=$(echo "$all_output" | tail -n +2)
+  fi
+  
+  # Apply budget if specified
+  if [[ "$budget" -gt 0 ]]; then
+    extracted_content=$(apply_budget "$extracted_content" "$budget")
+  fi
+  
+  # Calculate packed size
+  local packed_size
+  packed_size=$(echo -n "$extracted_content" | wc -c)
+  
+  # Output
+  echo "=== SKILL PACK ==="
+  echo "Skill: ${skill_name}"
+  echo "Source: ${skill_path}"
+  echo "Original size: ${original_size} bytes"
+  echo "Packed size: ${packed_size} bytes"
+  echo "Section: ${section_name}"
+  echo "=== BEGIN ==="
+  echo -n "$extracted_content"
+  echo "=== END ==="
+  local _mode="full"
+  if [[ "$list_sections" -eq 1 ]]; then _mode="list-sections"; elif [[ -n "$section" ]]; then _mode="section:${section}"; fi
+  log_usage "skill-pack:${skill_name}" 1 "${_mode}"
+}
+
+main "$@"

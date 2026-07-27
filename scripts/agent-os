@@ -1,0 +1,820 @@
+#!/usr/bin/env python3
+"""Agent OS — unified CLI for the Agent OS orchestration framework.
+
+Usage:
+    agent-os <command> [options] [args]
+
+Top-level commands:
+    doctor           One-verdict health check
+    health|status    Full cockpit diagnostic
+    verify           Deep verification suite
+    boot             Boot sequence
+    sync-check       INDEX.md vs on-disk drift report
+    render           Regenerate INDEX.md from registries
+    acp              ACP dispatch & monitoring
+    memory           Memory operations
+    skill            Skills management
+    stumble          Stumble management
+    registry         Registry operations
+    quality          Quality gates
+    vault            Knowledge vault operations
+    docs             Documentation operations
+    cron             Cron fleet operations
+    voice            Agent Voice insights
+    handoff          Handoff lifecycle
+    research         Research collection
+
+Global flags:
+    --json           Machine-readable JSON output
+    --quiet, -q      Suppress non-error output
+    --verbose, -v    Show detailed command output
+    --help           Show help for any command
+
+Examples:
+    agent-os doctor
+    agent-os health --json
+    agent-os acp send agent-os review "Check the system"
+    agent-os memory recall "boot protocol" --json
+    agent-os skill rank "memory operations" --top 5
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+from textwrap import dedent
+
+# ── Constants ──────────────────────────────────────────────────────────────
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+AGENT_OS_DIR = SCRIPT_DIR.parent
+BIN_DIR = AGENT_OS_DIR / "bin"
+
+EXIT_OK = 0
+EXIT_WARN = 1
+EXIT_ERROR = 2
+EXIT_USAGE = 64
+
+# Scripts that natively support --json (pass through rather than envelope)
+NATIVE_JSON_COMMANDS: set[tuple[str, ...]] = {
+    ("memory", "health"),
+    ("memory", "lifecycle"),
+    ("skill", "rank"),
+    ("acp", "health"),
+    ("registry", "check"),
+    ("quality", "gates"),
+    ("stumble", "propose"),
+}
+
+# ── Helpers ────────────────────────────────────────────────────────────────
+
+
+def _resolve(script: str) -> Path:
+    """Resolve a script path relative to agent-os directory."""
+    p = Path(script)
+    if p.is_absolute():
+        return p
+    return AGENT_OS_DIR / script
+
+
+def run(
+    script: str,
+    args: list[str],
+    *,
+    json_mode: bool = False,
+    quiet: bool = False,
+    verbose: bool = False,
+) -> tuple[int, str]:
+    """Run a script and return (exit_code, output).
+
+    The script path is resolved relative to AGENT_OS_DIR. If json_mode is
+    True and the script is known to support --json natively, the flag is
+    appended.
+    """
+    script_path = _resolve(script)
+    if not script_path.exists():
+        msg = f"error: required script not found: {script_path}"
+        return EXIT_ERROR, msg
+
+    cmd = [str(script_path)] + args
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+    except subprocess.TimeoutError:
+        return EXIT_ERROR, "error: command timed out"
+
+    output = result.stdout
+    if result.stderr:
+        if output and not output.endswith("\n"):
+            output += "\n"
+        output += result.stderr
+
+    return result.returncode, output
+
+
+def json_envelope(
+    status: str,
+    output: str,
+    exit_code: int = 0,
+    command: str | None = None,
+    error: str | None = None,
+    **extra,
+) -> str:
+    """Wrap non-JSON output in a standard envelope dict."""
+    envelope: dict = {
+        "status": status,
+        "exit_code": exit_code,
+        "output": output,
+    }
+    if command:
+        envelope["command"] = command
+    if error:
+        envelope["error"] = error
+    envelope.update(extra)
+    return json.dumps(envelope, indent=2)
+
+
+def handle_output(
+    exit_code: int,
+    output: str,
+    *,
+    json_mode: bool,
+    command_path: tuple[str, ...],
+    quiet: bool = False,
+) -> None:
+    """Print output in the requested format, then exit."""
+    if json_mode and command_path in NATIVE_JSON_COMMANDS:
+        # Script natively supports JSON — pass through if valid
+        try:
+            parsed = json.loads(output)
+            print(json.dumps(parsed, indent=2))
+            sys.exit(exit_code)
+        except json.JSONDecodeError:
+            pass  # fall through to envelope
+
+    if json_mode:
+        # Wrap in envelope
+        status = "ok"
+        if exit_code == EXIT_WARN:
+            status = "warn"
+        elif exit_code >= EXIT_ERROR:
+            status = "error"
+        envelope = json_envelope(
+            status=status,
+            output=output,
+            exit_code=exit_code,
+            command="/".join(command_path),
+        )
+        print(envelope)
+        sys.exit(exit_code if exit_code < EXIT_USAGE else EXIT_ERROR)
+
+    # Human-readable output
+    if quiet and exit_code == EXIT_OK and output.strip():
+        return
+    if output.strip():
+        sys.stdout.write(output)
+        if not output.endswith("\n"):
+            sys.stdout.write("\n")
+    sys.exit(exit_code)
+
+
+def die(message: str, exit_code: int = EXIT_USAGE) -> None:
+    """Print an error message and exit."""
+    print(f"error: {message}", file=sys.stderr)
+    sys.exit(exit_code)
+
+
+# ── Health / Status ────────────────────────────────────────────────────────
+
+
+def cmd_health(args: argparse.Namespace) -> None:
+    """Full cockpit diagnostic (file structure, scripts, venv, secrets)."""
+    script = "scripts/agent-os-health.sh"
+    rc, out = run(script, [], json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(rc, out, json_mode=args.json, command_path=("health",), quiet=args.quiet)
+
+
+# ── Verify ──────────────────────────────────────────────────────────────────
+
+
+def cmd_verify(args: argparse.Namespace) -> None:
+    """Deep verification suite (memory, ACP, docs, scripts)."""
+    script = "scripts/agent-os-verify.sh"
+    cmd_args = []
+    if args.suite:
+        cmd_args.append(args.suite)
+    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(rc, out, json_mode=args.json, command_path=("verify",), quiet=args.quiet)
+
+
+# ── Boot ────────────────────────────────────────────────────────────────────
+
+
+def cmd_boot(args: argparse.Namespace) -> None:
+    """Boot sequence — sources config, verifies secrets, prints health banner."""
+    script = "scripts/agent-os-boot.sh"
+    rc, out = run(script, [], json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(rc, out, json_mode=args.json, command_path=("boot",), quiet=args.quiet)
+
+
+# ── Sync-Check ──────────────────────────────────────────────────────────────
+
+
+def cmd_sync_check(args: argparse.Namespace) -> None:
+    """Verify INDEX.md matches on-disk reality."""
+    script = "scripts/sync-check.sh"
+    rc, out = run(script, [], json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(rc, out, json_mode=args.json, command_path=("sync-check",), quiet=args.quiet)
+
+
+# ── ACP Subsystem ───────────────────────────────────────────────────────────
+
+
+def cmd_acp_send(args: argparse.Namespace) -> None:
+    """Dispatch an ACP task to a role in a workspace."""
+    script = str(BIN_DIR / "acp-task")
+    cmd_args = [args.role, args.workspace, args.objective]
+    if args.wait:
+        cmd_args.append("--wait")
+    if args.session:
+        cmd_args.extend(["--session", args.session])
+    if args.wait_timeout:
+        cmd_args.extend(["--wait-timeout", str(args.wait_timeout)])
+    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(rc, out, json_mode=args.json, command_path=("acp", "send"), quiet=args.quiet)
+
+
+def cmd_acp_health(args: argparse.Namespace) -> None:
+    """Report ACP daemon health."""
+    script = str(BIN_DIR / "acp-health")
+    cmd_args = []
+    if args.json:
+        cmd_args.append("--json")
+    if args.quiet:
+        cmd_args.append("--clean")
+    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(
+        rc, out, json_mode=args.json, command_path=("acp", "health"), quiet=args.quiet
+    )
+
+
+# ── Memory Subsystem ────────────────────────────────────────────────────────
+
+
+def cmd_memory_recall(args: argparse.Namespace) -> None:
+    """Search across all memory tiers."""
+    if args.json:
+        # Use memory-recall-safe.py for JSON output
+        script = "scripts/memory-recall-safe.py"
+        cmd_args = ["--text", args.query]
+        if args.limit:
+            cmd_args.extend(["--limit", str(args.limit)])
+        rc, out = run(
+            script, cmd_args, json_mode=True, quiet=args.quiet, verbose=args.verbose
+        )
+        handle_output(
+            rc, out, json_mode=True, command_path=("memory", "recall"), quiet=args.quiet
+        )
+        return
+
+    script = "scripts/recall.sh"
+    cmd_args = [args.query]
+    if args.tier:
+        cmd_args.extend(["--tier", args.tier])
+    if args.semantic:
+        cmd_args.append("--semantic")
+    if args.hybrid:
+        cmd_args.append("--hybrid")
+    if args.explain:
+        cmd_args.append("--explain")
+    rc, out = run(script, cmd_args, json_mode=False, quiet=args.quiet, verbose=args.verbose)
+    handle_output(rc, out, json_mode=False, command_path=("memory", "recall"), quiet=args.quiet)
+
+
+def cmd_memory_health(args: argparse.Namespace) -> None:
+    """Memory stack health gate with tier distinction."""
+    script = "scripts/memory-health-gate.py"
+    cmd_args = []
+    if args.json:
+        cmd_args.append("--json")
+    if args.live_export:
+        cmd_args.append("--live-export")
+    if args.golden:
+        cmd_args.append("--golden")
+    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(
+        rc, out, json_mode=args.json, command_path=("memory", "health"), quiet=args.quiet
+    )
+
+
+def cmd_memory_promote(args: argparse.Namespace) -> None:
+    """Promote short-term memory to long-term memory."""
+    script = str(BIN_DIR / "memory-promote")
+    cmd_args = []
+    if args.dry_run:
+        cmd_args.append("--dry-run")
+    if args.target:
+        cmd_args.extend(["--target", args.target])
+    if args.limit:
+        cmd_args.extend(["--limit", str(args.limit)])
+    if args.json:
+        cmd_args.append("--json")
+    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(
+        rc, out, json_mode=args.json, command_path=("memory", "promote"), quiet=args.quiet
+    )
+
+
+def cmd_memory_lifecycle(args: argparse.Namespace) -> None:
+    """Cross-tier stale detection and lifecycle management."""
+    script = "scripts/memory-lifecycle.py"
+    cmd_args = ["detect-stale"]
+    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(
+        rc, out, json_mode=args.json, command_path=("memory", "lifecycle"), quiet=args.quiet
+    )
+
+
+# ── Skill Subsystem ─────────────────────────────────────────────────────────
+
+
+def cmd_skill_rank(args: argparse.Namespace) -> None:
+    """Rank skills by relevance to a query."""
+    script = "scripts/skill-rank"
+    cmd_args = [args.query]
+    if args.top:
+        cmd_args.extend(["--top", str(args.top)])
+    if args.tier:
+        cmd_args.extend(["--tier", args.tier])
+    if args.json:
+        cmd_args.append("--json")
+    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(
+        rc, out, json_mode=args.json, command_path=("skill", "rank"), quiet=args.quiet
+    )
+
+
+def cmd_skill_pack(args: argparse.Namespace) -> None:
+    """Extract actionable sections from a SKILL.md file."""
+    script = "scripts/skill-pack"
+    cmd_args = [args.name]
+    if args.list_sections:
+        cmd_args.append("--list-sections")
+    if args.section:
+        cmd_args.extend(["--section", args.section])
+    if args.budget:
+        cmd_args.extend(["--budget", str(args.budget)])
+    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(
+        rc, out, json_mode=args.json, command_path=("skill", "pack"), quiet=args.quiet
+    )
+
+
+def cmd_skill_context(args: argparse.Namespace) -> None:
+    """Auto-inject relevant skill context for a task."""
+    script = "scripts/skill-context.sh"
+    cmd_args = [args.text]
+    if args.budget:
+        cmd_args.append(str(args.budget))
+    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(
+        rc, out, json_mode=args.json, command_path=("skill", "context"), quiet=args.quiet
+    )
+
+
+# ── Stumble Subsystem ───────────────────────────────────────────────────────
+
+
+def cmd_stumble_triage(args: argparse.Namespace) -> None:
+    """Daily triage of stumble records."""
+    script = str(BIN_DIR / "stumble-triage")
+    cmd_args = []
+    if args.json:
+        cmd_args.append("--json")
+    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(
+        rc, out, json_mode=args.json, command_path=("stumble", "triage"), quiet=args.quiet
+    )
+
+
+def cmd_stumble_review(args: argparse.Namespace) -> None:
+    """Review and decide on triaged stumbles."""
+    script = str(BIN_DIR / "stumble-review")
+    cmd_args = [args.action]
+    if args.id:
+        cmd_args.append(args.id)
+    if args.decision:
+        cmd_args.append(args.decision)
+    if args.json:
+        cmd_args.append("--json")
+    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(
+        rc, out, json_mode=args.json, command_path=("stumble", "review"), quiet=args.quiet
+    )
+
+
+def cmd_stumble_propose(args: argparse.Namespace) -> None:
+    """Generate reviewed proposals from stumble clusters."""
+    script = "scripts/stumble-propose-rule.py"
+    cmd_args = []
+    if args.summary:
+        cmd_args.append("--summary")
+    if args.json:
+        cmd_args.append("--json")
+    if args.dry_run:
+        cmd_args.append("--dry-run")
+    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(
+        rc, out, json_mode=args.json, command_path=("stumble", "propose"), quiet=args.quiet
+    )
+
+
+def cmd_stumble_apply(args: argparse.Namespace) -> None:
+    """Apply approved stumble proposals."""
+    script = "scripts/stumble-apply-decision.py"
+    cmd_args = []
+    if args.dry_run:
+        cmd_args.append("--dry-run")
+    if args.all:
+        cmd_args.append("--all")
+    if args.fingerprint:
+        cmd_args.extend(["--apply", args.fingerprint])
+    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(
+        rc, out, json_mode=args.json, command_path=("stumble", "apply"), quiet=args.quiet
+    )
+
+
+def cmd_stumble_cleanup(args: argparse.Namespace) -> None:
+    """Clean up old triage reports."""
+    script = "scripts/stumble-cleanup.py"
+    rc, out = run(script, [], json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(
+        rc, out, json_mode=args.json, command_path=("stumble", "cleanup"), quiet=args.quiet
+    )
+
+
+# ── Registry Subsystem ──────────────────────────────────────────────────────
+
+
+def cmd_registry_check(args: argparse.Namespace) -> None:
+    """Validate all registry YAML files."""
+    script = "scripts/registry-check.py"
+    cmd_args = []
+    if args.json:
+        cmd_args.append("--json")
+    if args.strict:
+        cmd_args.append("--strict")
+    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(
+        rc, out, json_mode=args.json, command_path=("registry", "check"), quiet=args.quiet
+    )
+
+
+def cmd_registry_build(args: argparse.Namespace) -> None:
+    """Build agent OS manifest from registries."""
+    script = "scripts/build-manifest.py"
+    cmd_args = []
+    if args.dry_run:
+        cmd_args.append("--dry-run")
+    if args.capabilities_only:
+        cmd_args.append("--capabilities-only")
+    if args.live:
+        cmd_args.append("--live")
+    if args.json:
+        cmd_args.append("--json")
+    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(
+        rc, out, json_mode=args.json, command_path=("registry", "build"), quiet=args.quiet
+    )
+
+
+# ── Quality Gates ───────────────────────────────────────────────────────────
+
+
+def cmd_quality_gates(args: argparse.Namespace) -> None:
+    """Run rule-based quality checks."""
+    script = "scripts/quality-gates.py"
+    cmd_args = []
+    if args.check:
+        cmd_args.extend(["--check", args.check])
+    if args.json:
+        cmd_args.append("--json")
+    if args.compact:
+        cmd_args.append("--compact")
+    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(
+        rc, out, json_mode=args.json, command_path=("quality", "gates"), quiet=args.quiet
+    )
+
+
+# ── Voice Subsystem ─────────────────────────────────────────────────────────
+
+
+def cmd_voice_emit(args: argparse.Namespace) -> None:
+    """Emit an Agent Voice insight."""
+    script = str(BIN_DIR / "agent-voice")
+    cmd_args = ["emit"]
+    if args.text:
+        cmd_args.extend(["--text", args.text])
+    if args.json:
+        cmd_args.append("--json")
+    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(
+        rc, out, json_mode=args.json, command_path=("voice", "emit"), quiet=args.quiet
+    )
+
+
+def cmd_voice_list(args: argparse.Namespace) -> None:
+    """List Agent Voice insights."""
+    script = str(BIN_DIR / "agent-voice")
+    cmd_args = ["list"]
+    if args.json:
+        cmd_args.append("--json")
+    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
+    handle_output(
+        rc, out, json_mode=args.json, command_path=("voice", "list"), quiet=args.quiet
+    )
+
+
+# ── Subcommand Builders ─────────────────────────────────────────────────────
+
+
+def add_global_flags(parser: argparse.ArgumentParser) -> None:
+    """Add global flags inherited by all subcommands."""
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Machine-readable JSON output",
+    )
+    parser.add_argument(
+        "-q", "--quiet",
+        action="store_true",
+        help="Suppress non-error output",
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Show detailed command output",
+    )
+
+
+def build_health(sub) -> None:
+    p = sub.add_parser("health", help="Full cockpit diagnostic", aliases=["status"], description=cmd_health.__doc__)
+    add_global_flags(p)
+    p.set_defaults(func=cmd_health)
+
+
+def build_verify(sub) -> None:
+    p = sub.add_parser("verify", help="Deep verification suite", description=cmd_verify.__doc__)
+    p.add_argument("suite", nargs="?", choices=["all", "memory", "acp", "refs", "scripts"], help="Verification suite to run")
+    add_global_flags(p)
+    p.set_defaults(func=cmd_verify)
+
+
+def build_boot(sub) -> None:
+    p = sub.add_parser("boot", help="Boot sequence", description=cmd_boot.__doc__)
+    add_global_flags(p)
+    p.set_defaults(func=cmd_boot)
+
+
+def build_sync_check(sub) -> None:
+    p = sub.add_parser("sync-check", help="INDEX.md vs on-disk drift report", description=cmd_sync_check.__doc__)
+    add_global_flags(p)
+    p.set_defaults(func=cmd_sync_check)
+
+
+def build_acp(sub) -> None:
+    p = sub.add_parser("acp", help="ACP dispatch & monitoring", description="Send, monitor, and manage ACP tasks.")
+    add_global_flags(p)
+    acp_sub = p.add_subparsers(dest="acp_command", metavar="<command>", required=True)
+
+    # acp send
+    sp = acp_sub.add_parser("send", help="Dispatch an ACP task", description=cmd_acp_send.__doc__)
+    sp.add_argument("role", help="Target role (e.g. agent-os)")
+    sp.add_argument("workspace", help="Target workspace")
+    sp.add_argument("objective", help="Task objective text")
+    sp.add_argument("--wait", action="store_true", help="Wait for completion")
+    sp.add_argument("--session", help="Session name")
+    sp.add_argument("--wait-timeout", type=int, default=300, help="Wait timeout in seconds")
+    add_global_flags(sp)
+    sp.set_defaults(func=cmd_acp_send)
+
+    # acp health
+    sp = acp_sub.add_parser("health", help="ACP daemon health", description=cmd_acp_health.__doc__)
+    add_global_flags(sp)
+    sp.set_defaults(func=cmd_acp_health)
+
+def build_memory(sub) -> None:
+    p = sub.add_parser("memory", help="Memory operations", description="Search, manage, and monitor Agent OS memory tiers.")
+    add_global_flags(p)
+    mem_sub = p.add_subparsers(dest="memory_command", metavar="<command>", required=True)
+
+    # memory recall
+    sp = mem_sub.add_parser("recall", help="Search across all memory tiers", description=cmd_memory_recall.__doc__)
+    sp.add_argument("query", help="Search query")
+    sp.add_argument("--tier", help="Memory tier to search")
+    sp.add_argument("--semantic", action="store_true", help="Semantic search")
+    sp.add_argument("--hybrid", action="store_true", help="Hybrid search")
+    sp.add_argument("--explain", action="store_true", help="Explain search results")
+    sp.add_argument("--limit", type=int, default=10, help="Max results")
+    add_global_flags(sp)
+    sp.set_defaults(func=cmd_memory_recall)
+
+    # memory health
+    sp = mem_sub.add_parser("health", help="Memory stack health gate", description=cmd_memory_health.__doc__)
+    sp.add_argument("--live-export", action="store_true", help="Export live health data")
+    sp.add_argument("--golden", action="store_true", help="Compare against golden state")
+    add_global_flags(sp)
+    sp.set_defaults(func=cmd_memory_health)
+
+    # memory promote
+    sp = mem_sub.add_parser("promote", help="Promote ST to LT memory", description=cmd_memory_promote.__doc__)
+    sp.add_argument("--dry-run", action="store_true", help="Preview only")
+    sp.add_argument("--target", choices=["st-vector", "st-graph", "report"], help="Promotion target")
+    sp.add_argument("--limit", type=int, help="Max records to promote")
+    add_global_flags(sp)
+    sp.set_defaults(func=cmd_memory_promote)
+
+    # memory lifecycle
+    sp = mem_sub.add_parser("lifecycle", help="Cross-tier stale detection", description=cmd_memory_lifecycle.__doc__)
+    add_global_flags(sp)
+    sp.set_defaults(func=cmd_memory_lifecycle)
+
+
+def build_skill(sub) -> None:
+    p = sub.add_parser("skill", help="Skills management", description="Rank, pack, and inject Agent OS skills.")
+    add_global_flags(p)
+    sk_sub = p.add_subparsers(dest="skill_command", metavar="<command>", required=True)
+
+    # skill rank
+    sp = sk_sub.add_parser("rank", help="Rank skills by relevance", description=cmd_skill_rank.__doc__)
+    sp.add_argument("query", help="Query to rank skills against")
+    sp.add_argument("--top", type=int, default=10, help="Number of results")
+    sp.add_argument("--tier", help="Filter by tier")
+    add_global_flags(sp)
+    sp.set_defaults(func=cmd_skill_rank)
+
+    # skill pack
+    sp = sk_sub.add_parser("pack", help="Extract skill sections", description=cmd_skill_pack.__doc__)
+    sp.add_argument("name", help="Skill name")
+    sp.add_argument("--list-sections", action="store_true", help="List available sections")
+    sp.add_argument("--section", help="Extract specific section heading")
+    sp.add_argument("--budget", type=int, help="Token budget for output")
+    add_global_flags(sp)
+    sp.set_defaults(func=cmd_skill_pack)
+
+    # skill context
+    sp = sk_sub.add_parser("context", help="Auto-inject skill context", description=cmd_skill_context.__doc__)
+    sp.add_argument("text", help="Task text to match against skills")
+    sp.add_argument("budget", nargs="?", type=int, help="Token budget")
+    add_global_flags(sp)
+    sp.set_defaults(func=cmd_skill_context)
+
+
+def build_stumble(sub) -> None:
+    p = sub.add_parser("stumble", help="Stumble management", description="Triage, review, propose, and apply stumble fixes.")
+    add_global_flags(p)
+    st_sub = p.add_subparsers(dest="stumble_command", metavar="<command>", required=True)
+
+    # stumble triage
+    sp = st_sub.add_parser("triage", help="Daily stumble triage", description=cmd_stumble_triage.__doc__)
+    add_global_flags(sp)
+    sp.set_defaults(func=cmd_stumble_triage)
+
+    # stumble review
+    sp = st_sub.add_parser("review", help="Review and decide on stumbles", description=cmd_stumble_review.__doc__)
+    sp.add_argument("action", choices=["list", "show", "decide"], help="Review action")
+    sp.add_argument("id", nargs="?", help="Stumble ID (for show/decide)")
+    sp.add_argument("decision", nargs="?", help="Decision (for decide)")
+    add_global_flags(sp)
+    sp.set_defaults(func=cmd_stumble_review)
+
+    # stumble propose
+    sp = st_sub.add_parser("propose", help="Generate proposals from clusters", description=cmd_stumble_propose.__doc__)
+    sp.add_argument("--summary", action="store_true", help="Show brief summary")
+    sp.add_argument("--dry-run", action="store_true", help="Preview without writing")
+    add_global_flags(sp)
+    sp.set_defaults(func=cmd_stumble_propose)
+
+    # stumble apply
+    sp = st_sub.add_parser("apply", help="Apply approved proposals", description=cmd_stumble_apply.__doc__)
+    sp.add_argument("--dry-run", action="store_true", help="Preview without applying")
+    sp.add_argument("--all", action="store_true", help="Apply all pending")
+    sp.add_argument("--fingerprint", help="Apply specific fingerprint")
+    add_global_flags(sp)
+    sp.set_defaults(func=cmd_stumble_apply)
+
+    # stumble cleanup
+    sp = st_sub.add_parser("cleanup", help="Clean old triage reports", description=cmd_stumble_cleanup.__doc__)
+    add_global_flags(sp)
+    sp.set_defaults(func=cmd_stumble_cleanup)
+
+
+def build_registry(sub) -> None:
+    p = sub.add_parser("registry", help="Registry operations", description="Validate and build Agent OS registries.")
+    add_global_flags(p)
+    reg_sub = p.add_subparsers(dest="registry_command", metavar="<command>", required=True)
+
+    # registry check
+    sp = reg_sub.add_parser("check", help="Validate registry YAML files", description=cmd_registry_check.__doc__)
+    sp.add_argument("--strict", action="store_true", help="Fail on all issues")
+    add_global_flags(sp)
+    sp.set_defaults(func=cmd_registry_check)
+
+    # registry build
+    sp = reg_sub.add_parser("build", help="Build manifest from registries", description=cmd_registry_build.__doc__)
+    sp.add_argument("--dry-run", action="store_true", help="Preview without writing")
+    sp.add_argument("--capabilities-only", action="store_true", help="Only capabilities")
+    sp.add_argument("--live", action="store_true", help="Include live data")
+    add_global_flags(sp)
+    sp.set_defaults(func=cmd_registry_build)
+
+
+def build_quality(sub) -> None:
+    p = sub.add_parser("quality", help="Quality gates", description="Run rule-based quality checks.")
+    add_global_flags(p)
+    q_sub = p.add_subparsers(dest="quality_command", metavar="<command>", required=True)
+
+    sp = q_sub.add_parser("gates", help="Run quality gates", description=cmd_quality_gates.__doc__)
+    sp.add_argument("--check", choices=["stale", "contradictions", "completion", "all"], help="Specific check to run")
+    sp.add_argument("--compact", action="store_true", help="Compact cron-friendly output")
+    add_global_flags(sp)
+    sp.set_defaults(func=cmd_quality_gates)
+
+
+def build_voice(sub) -> None:
+    p = sub.add_parser("voice", help="Agent Voice insights", description="Emit and list Agent Voice insights.")
+    add_global_flags(p)
+    vo_sub = p.add_subparsers(dest="voice_command", metavar="<command>", required=True)
+
+    sp = vo_sub.add_parser("emit", help="Emit an insight", description=cmd_voice_emit.__doc__)
+    sp.add_argument("--text", help="Insight text (omit for interactive)")
+    add_global_flags(sp)
+    sp.set_defaults(func=cmd_voice_emit)
+
+    sp = vo_sub.add_parser("list", help="List insights", description=cmd_voice_list.__doc__)
+    add_global_flags(sp)
+    sp.set_defaults(func=cmd_voice_list)
+
+
+# ── Main ────────────────────────────────────────────────────────────────────
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        prog="agent-os",
+        description="Agent OS — unified CLI for the agent orchestration framework.\n"
+        "\n"
+        "Examples:\n"
+        "  agent-os health --json\n"
+        "  agent-os memory recall \"boot protocol\"\n"
+        "  agent-os acp send agent-os review \"Check the system\"\n"
+        "  agent-os skill rank \"memory ops\" --top 5 --json\n"
+        "  agent-os registry check --json",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    sub = parser.add_subparsers(dest="command", metavar="<command>")
+    sub.required = False
+
+    build_health(sub)
+    build_verify(sub)
+    build_boot(sub)
+    build_sync_check(sub)
+    build_acp(sub)
+    build_memory(sub)
+    build_skill(sub)
+    build_stumble(sub)
+    build_registry(sub)
+    build_quality(sub)
+    build_voice(sub)
+
+    if len(sys.argv) <= 1:
+        parser.print_help()
+        sys.exit(EXIT_USAGE)
+
+    # Handle --json, --quiet, --verbose at top level before subcommand parsing
+    # They'll be parsed by the subparser, but we want the main parser to be aware too.
+
+    args = parser.parse_args()
+
+    if not hasattr(args, "func"):
+        parser.print_help()
+        sys.exit(EXIT_USAGE)
+
+    try:
+        args.func(args)
+    except Exception as e:
+        die(str(e), EXIT_ERROR)
+
+
+if __name__ == "__main__":
+    main()

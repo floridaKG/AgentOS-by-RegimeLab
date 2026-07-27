@@ -1,0 +1,42 @@
+# Agent OS OSS - Build evidence and private state
+.ossbuild/
+.eggs/
+build/
+dist/
+*.egg-info/
+.video-agent-os/
+*.build-artifacts/
+*.stale
+.local/
+.config/agent-os/
+handoffs/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.template
+!config.env.template
+*.sqlite
+*.db
+*.pem
+*_ed25519
+*_rsa
+credential*.json
+node_modules/
+.venv/
+droid-wiki/
+droid-wiki-new/
+
+# Local planning/spec artifacts are not part of the public release tree.
+specs/active/*
+!specs/active/.gitkeep
+
+# Credentials and secrets
+secrets.env
+service-account*.json
+.npmrc
+.netrc
+*.key
+*.p8
+*.keystore
+kubeconfig

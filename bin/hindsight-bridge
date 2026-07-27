@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Facade: Hindsight → Agent OS short-term bridge
+set -euo pipefail
+ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+AGENT_OS_HOME="${AGENT_OS_HOME:-$ROOT}"
+exec python3 "$AGENT_OS_HOME/memory/hindsight_bridge.py" "$@"

@@ -1,0 +1,47 @@
+# Portable agent workflow role assignments.
+# Replace provider/model values with IDs advertised by your installed CLIs.
+# Providers are setup-driven. Built-in examples include opencode, codex,
+# claude, droid, pi, hermes, cline, omp, cursor, and grok. Add any ACPx
+# compatible profile by using its name here.
+
+[explorer]
+model = "default"
+provider = "opencode"
+cost = "user-configured"
+
+[architect]
+model = "default"
+provider = "claude"
+cost = "user-configured"
+
+[executor]
+model = "default"
+provider = "codex"
+cost = "user-configured"
+
+[reviewer]
+model = "default"
+provider = "claude"
+cost = "user-configured"
+
+[code_reviewer]
+model = "default"
+provider = "codex"
+cost = "user-configured"
+
+[escalation]
+model = "default"
+provider = "claude"
+cost = "user-configured"
+
+[hard_escalation]
+model = "default"
+provider = "claude"
+cost = "user-configured"
+
+[workspaces]
+# Generic defaults — edit paths to match your machine. Add more workspaces as needed.
+home = { path = "$AGENT_OS_HOME" }
+work = { path = "$HOME/projects/work" }
+docs = { path = "$HOME/projects/docs" }
+vault = { path = "$VAULT_PATH" }

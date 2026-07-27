@@ -1,0 +1,54 @@
+# governance-check.yml — Reusable CI workflow for SuperDocs governance validation.
+#
+# Run this workflow to validate that documentation governance structure,
+# policies, and conventions are properly maintained.
+#
+# Usage: add to your project's .github/workflows/ directory.
+
+name: Governance Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  governance-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Run governance validation
+        id: check
+        run: |
+          if [[ -f scripts/check-governance.sh ]]; then
+            bash scripts/check-governance.sh --path docs/ || echo "FAILED=true" >> "$GITHUB_OUTPUT"
+          elif [[ -f .github/workflows/check-governance.sh ]]; then
+            bash .github/workflows/check-governance.sh --path docs/ || echo "FAILED=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Commit a reviewed checker to this repository"
+            echo "FAILED=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload governance report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: governance-report
+          path: |
+            docs/governance/POLICY.md
+            docs/governance/decision-log.md
+            docs/guardrails/conventions.md
+          retention-days: 7
+
+      - name: Report governance status
+        if: always()
+        run: |
+          if [[ "${{ steps.check.outputs.FAILED }}" == "true" ]]; then
+            echo "::warning::Governance checks failed. Review the policy and decision log."
+            exit 1
+          else
+            echo "::notice::All governance checks passed."
+          fi

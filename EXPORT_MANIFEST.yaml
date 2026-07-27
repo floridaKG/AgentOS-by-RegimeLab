@@ -1,0 +1,371 @@
+# Agent OS OSS Contents Manifest
+# Documents every file in the public repository and why it's included.
+# The allowlist defines what ships; the denylist documents what was
+# intentionally excluded during curation.
+
+metadata:
+  version: 1.0.0
+  created: 2026-06-25
+  umbrella: 2026-06-25-agent-os-opensource-program-umbrella
+  license: Apache-2.0
+
+allowlist:
+  # --- Root-level files (all shipped root-level files) ---
+  runtime_root:
+    - AGENTS.md
+    - BOOT.md
+    - COMMERCIAL_BOUNDARY.md
+    - EXPORT_MANIFEST.yaml
+    - INDEX.md
+    - LICENSE
+    - PRIVACY_BOUNDARY.md
+    - README.md
+    - RELEASE_READINESS.md
+    - SETUP.md
+    - bootstrap.sh
+    - install.sh
+    - .env.template
+    - config.env.template
+    - requirements.txt
+    - pyproject.toml
+    - CODE_OF_CONDUCT.md
+    - CONTRIBUTING.md
+    - SECURITY.md
+    - .gitattributes
+    - .gitignore
+
+  # --- Bin (CLI entry points) ---
+  bin:
+    source: $AGENT_OS_HOME/bin
+    files:
+      - agent-os
+      - agent-os-mcp
+      - agent-os-setup
+      - memory-inject
+      - memory-lt
+      - memory-promote
+      - memory-recall-safe
+      - agent-voice
+      - team
+      - agent-workflow
+      - memory-recall
+      - memory-st
+      - acp-task
+      - acp-daemon
+      - acp-health
+      - acp-provider-smoke
+      - agent-mail
+      - command-risk-check
+      - spec-check
+      - log-stumble
+      - stumble-triage
+      - stumble-review
+      - stumble-cleanup
+      - hindsight-bridge
+      - hindsight-gc
+      - hindsight-health
+      - rtk
+
+  # --- ACP config (agent-workflows configuration) ---
+  bin_acp_config:
+    source: $AGENT_OS_HOME/.config/agent-workflows
+    files:
+      - roles.toml
+      - panels.toml
+      - model_aliases.toml
+      - safety.toml
+      - acp/acp_send.py
+      - acp/acp_completion.py
+      - lib/run.sh
+      - lib/acpx-dispatch.sh
+      - lib/safety.sh
+      - lib/workspace.sh
+      - lib/packet.sh
+      - swarm.sh
+      - council.sh
+      - escalate.sh
+      - orchestrate.sh
+      - dialogue.sh
+      - redteam.sh
+      - load-roles.sh
+
+  # --- ACP core library (inter-agent protocol) ---
+  acp_core:
+    source: $AGENT_OS_HOME/acp
+    files:
+      - __init__.py
+      - interchange.py
+      - interchange_resolver.py
+      - routing.py
+      - send.py
+
+  # --- AGENTS.md from runtime repo (the canonical one) ---
+  agents_md:
+    source: $AGENT_OS_HOME/agent-os
+    files: [AGENTS.md]
+
+  # --- Registry (public configuration surfaces) ---
+  registry:
+    source: $AGENT_OS_HOME/registry
+    files:
+      - agent-manifest.yaml
+      - agents.yaml
+      - hard_rules.yaml
+      - mcp_servers.yaml
+      - memory_tiers.yaml
+      - skills.yaml
+      - tools.yaml
+      - workflows.yaml
+      - workspaces.yaml
+      - critical-infrastructure.yaml
+
+  # --- Shared skills (curated OSS subset) ---
+  shared_skills:
+    source: $AGENT_OS_HOME/skills/shared
+    skills:
+      - acp
+      - recall
+      - lesson
+      - digest
+      - doc-audit
+      - skill-optimizer
+      - upward-handoff
+      - changes-review
+      - moe
+      - agent-workflows
+      - sidecar
+      - adversarial-review
+      - codegraph-tools
+      - umbrella-refactor
+      - sidecar-heavy
+    note: "Only the listed skills are curated for OSS. All others are excluded."
+
+  # Personalized/domain-specific Vault skills are intentionally excluded.
+  # The generic Vault scaffold ships under examples/vault-os/.
+
+  # --- GitHub templates and CI ---
+  github:
+    source: $AGENT_OS_HOME/.github
+    files:
+      - PULL_REQUEST_TEMPLATE.md
+      - workflows/ci.yml
+      - ISSUE_TEMPLATE/feature_request.md
+      - ISSUE_TEMPLATE/bug_report.md
+
+  # --- Specs root directory ---
+  specs_root:
+    source: $AGENT_OS_HOME/specs
+    files:
+      - .gitkeep
+      - active/.gitkeep
+
+  # --- Memory (SQLite ST, recall, promotion contracts, health gates) ---
+  memory_core:
+    source: $AGENT_OS_HOME/memory
+    files:
+      - README.md
+      - core/short_term.py
+      - core/recall_hook.py
+      - core/promote.py
+      - core/inject.py
+      - core/citation.py
+      - core/ledger.py
+      - core/session_compress.py
+      - core/schema_short_term.sql
+      - core/schema_citations.sql
+      - core/auto_approve_policy.json
+      - core/_envload.py
+      - core/extractors/
+      - core/schema_neo4j.cypher
+      - adapters/pinecone/ADAPTER.md
+      - adapters/neo4j/ADAPTER.md
+      - adapters/hindsight/ADAPTER.md
+      - hindsight_bridge.py
+      - hindsight_gc.py
+    exclude_patterns:
+      - reverse_cypher.py
+      - proposals.py
+      - long_term.py
+      - migrate_current.py
+
+  # --- Scripts (curated OSS subset) ---
+  scripts:
+    source: $AGENT_OS_HOME/scripts
+    files:
+      - agent-os
+      - agent-os-boot.sh
+      - agent-os-setup.sh
+      - agent-os-health.sh
+      - agent-os-verify.sh
+      - memory-recall-safe.py
+      - recall.sh
+      - skill-context.sh
+      - skill-pack
+      - skill-rank
+      - skill_health.py
+      - registry-check.py
+      - hard-rule-smoke.sh
+      - context-pack.sh
+      - sync-check.sh
+      - build-skills-repo.sh
+      - build-manifest.py
+      - agent_voice.py
+      - gate-release.sh
+      - gate-privacy.sh
+      - gate-cleanroom.sh
+      - gate-no-nested-ossbuild.sh
+      - init-vault.sh
+      - init-superdocs.sh
+      - acp-daemon-setup.sh
+      - check-governance.sh
+      - hindsight-health-check.py
+      - memory-health-gate.py
+      - memory-lifecycle.py
+      - memory-lifecycle-soak-check.py
+      - quality-gates.py
+      - stumble_contract.py
+      - stumble-triage.py
+      - stumble-review.py
+      - stumble-cleanup.py
+      - stumble-apply-decision.py
+      - stumble-propose-rule.py
+      - stumble-resolve-bridge.py
+    exclude_patterns:
+      - stumble-digest*
+      - vault*
+      - regime*
+      - cron*
+      - sync-hermes*
+      - agent-os-cli.sh
+      - agent-os-doctor.sh
+
+  # --- Docs for OSS (curated subset) ---
+  docs:
+    source: $AGENT_OS_HOME/docs
+    files:
+      - rtk-usage-guide.md
+      - codegraph-setup.md
+      - ARCHITECTURE.md
+      - BOOT_FACTS.yaml
+      - SPEC_TEMPLATE.md
+      - MEMORY_USER_GUIDE.md
+      - HANDOFF_AUTHORING_STANDARD.md
+      - AGENT_REPORT_CONVENTIONS.md
+      - SYSTEM_ARCHITECTURE_SOURCE_OF_TRUTH.md
+      - OPTIONAL_BACKENDS.md
+      - GETTING_STARTED.md
+      - MCP.md
+      - index.html
+      - .nojekyll
+      # Architecture marketing assets (logo binaries intentionally NOT shipped —
+      # display-only hotlink; see docs/assets/BRAND.md)
+      - assets/BRAND.md
+      - assets/oss-architecture-diagram.html
+      - assets/video/overview.mp4
+      # Launch / claim-safe marketing package
+      - launch/adversarial-readme-review.md
+      - launch/claim-inventory.md
+      - launch/cold-path-evidence.md
+      - launch/x-article.md
+
+  # --- Tests (shipped for user verification) ---
+  tests:
+    source: $AGENT_OS_HOME/tests
+    files:
+      - manifest-truth-gate.sh
+      - clean-room/install_and_verify.sh
+      - privacy/privacy_gate.sh
+      - smoke/cold_boot.sh
+      - smoke/release_gate.sh
+      - smoke/acp_mock_test.sh
+      - smoke/test_mock_timeout.py
+      - test-init-superdocs.sh
+      - test-init-vault.sh
+      - privacy/history_gate.sh
+      - privacy/privacy_gate_negative.sh
+      - cli/__init__.py
+      - cli/test_capabilities.py
+      - cli/test_config.py
+      - cli/test_diagnostics.py
+      - cli/test_mcp_cli.py
+      - cli/test_memory.py
+      - cli/test_models.py
+      - cli/test_paths.py
+      - mcp/__init__.py
+      - mcp/test_mcp_server.py
+      - security/ci_docs_hardening.sh
+      - security/test_runtime_security.py
+      - test-hindsight-adapter.sh
+
+  # --- Examples: Vault-OS ---
+  examples_vault_os:
+    source: $VAULT_PATH/docs/vault-os
+    files:
+      - README.md
+      - BOOT.md
+      - GLOSSARY.md
+      - SKILLS_INDEX.md
+      - REFERENCE.md
+      - agent_manifest.yaml
+      - registry/
+      - workflows/
+
+  # --- Examples: SuperDocs ---
+  examples_superdocs:
+    source: $AGENT_OS_HOME/examples/superdocs
+    files:
+      - README.md
+      - START_HERE.md
+      - TOOL_MAP.md
+      - AGENTS.md
+      - .github/workflows/governance-check.yml
+      - governance/
+      - guardrails/
+      - skills/
+      - workflows/
+      - registry/
+
+denylist:
+  always_blocked:
+    # Real .env files are blocked; .env.template and config.env.template are
+    # explicitly allowed as safe templates shipped in the release.
+    - ".env"
+    - ".env.*"
+    - "!.env.template"
+    - "!config.env.template"
+    - config.env
+    - "*.sqlite"
+    - "*.db"
+    - "*.pem"
+    - "*_ed25519"
+    - "*_rsa"
+    - credential*.json
+    - node_modules/
+    - ".venv/"
+    - "__pycache__/"
+    - ".factory/"
+    - ".claude/"
+    - ".codex/"
+    - handoffs/
+
+    - "state/"
+    - archive/
+    - drafts/
+    - proposals/
+    - notes/
+    - legacy/
+    - droid-wiki/       # Factory-generated documentation — excluded from public artifact; contains internal references
+    - droid-wiki-new/
+    - prompts/
+    - forge/
+    - dream/
+    - hooks/
+    - config/
+    - specs/
+    - .ossbuild/
+
+exclusions:
+  pi_knowledge: "Owner-specific Pi agent knowledge — not part of public harness"
+  workspace_skills: "Workspace-private skills excluded from public OSS v1"
+  handoffs: "Personal handoff history — excluded from OSS v1"
+  cron_state: "Owner's cron schedule — excluded from OSS v1"

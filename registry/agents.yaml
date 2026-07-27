@@ -1,0 +1,114 @@
+# Public Agent OS agents registry.
+# Supported agent integrations for ACP dispatch and multi-agent workflows.
+# Last rebuilt: 2026-07-13
+#
+# Status legend:
+#   tested     — Known to work with the current release; validated in CI.
+#   experimental — Works but not yet covered by automated tests.
+#
+# Every agent requires user configuration before it can dispatch tasks.
+# See SETUP.md for per-agent setup instructions.
+
+agents:
+  - id: claude
+    description: Anthropic Claude Code — strong reasoning, code review, orchestration
+    invocation_template: claude -p "{{prompt}}" --model {{model}}
+    role_strengths: [reasoning, review, orchestration]
+    use_when: "Complex reasoning, code review, team coordination"
+    status: tested
+    configuration:
+      requires: "claude CLI installed and authenticated (`claude --version`)"
+      setup_doc: "https://docs.anthropic.com/en/docs/claude-code"
+      models: "User-configured via `--model` flag"
+
+  - id: codex
+    description: OpenAI Codex — deep code analysis, complex refactoring
+    invocation_template: codex exec -m {{model}} --json -o {{out}} "{{prompt}}"
+    role_strengths: [code archaeology, refactoring, analysis]
+    use_when: "Deep code analysis, complex refactoring"
+    status: tested
+    configuration:
+      requires: "codex CLI installed and authenticated (`codex --version`)"
+      setup_doc: "https://github.com/openai/codex"
+      models: "User-configured via `-m` flag"
+
+  - id: opencode
+    description: OpenCode — lightweight agent host with multiple model support
+    invocation_template: opencode run --model {{model}} --title {{title}} "{{prompt}}"
+    role_strengths: [parallel exploration, fast review]
+    use_when: "Cheap/free model hosting, parallel exploration"
+    status: tested
+    configuration:
+      requires: "opencode CLI installed (`opencode --version`)"
+      setup_doc: "https://github.com/opencode-ai/opencode"
+      models: "User-configured via `--model` flag; free models available"
+
+  - id: droid
+    description: Droid-compatible ACP agent profile
+    invocation_template: "acpx droid exec"
+    role_strengths: [general-purpose, coding]
+    use_when: "Droid is installed and registered with ACPx"
+    status: experimental
+    configuration:
+      requires: "Droid ACPx profile installed and authenticated"
+      models: "User-configured by the Droid profile"
+
+  - id: pi
+    description: Pi ACP agent profile
+    invocation_template: "acpx pi exec"
+    role_strengths: [general-purpose, coding]
+    use_when: "Pi is installed and registered with ACPx"
+    status: experimental
+    configuration:
+      requires: "Pi ACPx profile installed and authenticated"
+      models: "Provider-qualified models configured in Pi"
+
+  - id: hermes
+    description: Hermes-compatible ACP agent profile
+    invocation_template: "acpx hermes exec"
+    role_strengths: [general-purpose, orchestration]
+    use_when: "Hermes is installed and registered with ACPx"
+    status: experimental
+    configuration:
+      requires: "Hermes ACPx profile installed and authenticated"
+      models: "User-configured by the Hermes profile"
+
+  - id: cline
+    description: Cline-compatible ACP agent profile
+    invocation_template: "acpx cline exec"
+    role_strengths: [coding, review]
+    use_when: "Cline is installed and registered with ACPx"
+    status: experimental
+    configuration:
+      requires: "Cline ACPx profile installed and authenticated"
+      models: "User-configured by the Cline profile"
+
+  - id: omp
+    description: OMP-compatible ACP agent profile
+    invocation_template: "acpx omp exec"
+    role_strengths: [general-purpose, coding]
+    use_when: "OMP is installed and registered with ACPx"
+    status: experimental
+    configuration:
+      requires: "OMP ACP wrapper installed and configured"
+      models: "User-configured through OMP_ACP_MODEL"
+
+  - id: cursor
+    description: Cursor-compatible ACP agent profile
+    invocation_template: "acpx cursor exec"
+    role_strengths: [coding, review]
+    use_when: "Cursor ACP profile is installed and registered with ACPx"
+    status: experimental
+    configuration:
+      requires: "Cursor ACP profile installed and authenticated"
+      models: "User-configured by the Cursor profile"
+
+  - id: grok
+    description: Grok-compatible ACP agent profile
+    invocation_template: "acpx grok exec"
+    role_strengths: [reasoning, research]
+    use_when: "Grok ACP profile is installed and registered with ACPx"
+    status: experimental
+    configuration:
+      requires: "Grok ACP profile installed and authenticated"
+      models: "User-configured by the Grok profile"

@@ -1,0 +1,5 @@
+workflows:
+  - id: knowledge-lifecycle
+    purpose: Capture, normalize, extract, connect, validate, and review content
+    status: template
+    path: workflows/knowledge-lifecycle.md

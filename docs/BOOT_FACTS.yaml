@@ -1,0 +1,40 @@
+# BOOT_FACTS.yaml — Agent OS boot facts
+# Read by every agent on every session start.
+# Source of truth for session state, required reads, and role assignments.
+# Last updated: 2026-06-26
+
+session:
+  current_date: 2026-06-26
+  agent_os_version: 1.0.0
+  distribution: public-open-core
+
+scan_path:
+  every_agent:
+    - $AGENT_OS_HOME/AGENTS.md
+    - $AGENT_OS_HOME/BOOT.md
+    - $AGENT_OS_HOME/docs/BOOT_FACTS.yaml
+  role_specific:
+    architect: []
+    executor: []
+    reviewer: []
+
+memory_profiles:
+  default: local-core
+  available:
+    - id: local-core
+      backend: SQLite
+      status: always_available
+    - id: semantic
+      backend: Pinecone
+      status: optional
+      config_var: PINECONE_API_KEY
+    - id: graph
+      backend: Neo4j
+      status: optional
+      config_var: NEO4J_URI
+
+system_state:
+  acp_daemon_running: false
+  memory_health: UNKNOWN
+  active_workspaces:
+    - home ($AGENT_OS_HOME)

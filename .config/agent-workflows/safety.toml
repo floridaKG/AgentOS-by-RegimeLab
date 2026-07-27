@@ -1,0 +1,11 @@
+[default]
+require_confirm = ["rm -rf", "git reset --hard", "DROP TABLE", "git push --force"]
+deny = []
+
+[workspace.example-project]
+allow = []
+deny = ["rm -rf /"]
+
+[workspace.vault]
+# vault is non-repo; no git commands ever
+deny = ["rm -rf", "git "]

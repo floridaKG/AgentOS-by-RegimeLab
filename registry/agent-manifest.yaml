@@ -1,0 +1,24 @@
+# Agent OS Public Manifest
+# Auto-generated summary of the public distribution.
+# Last rebuilt: 2026-07-27
+
+metadata:
+  version: 1.0.0
+  distribution: public-open-core
+  license: Apache-2.0
+
+summary:
+  skills: 15
+  tools: 32
+  workflows: 9
+  agents: 10
+  mcp_servers: 1
+  memory_tiers: 3
+
+source:
+  skills_registry: $AGENT_OS_HOME/registry/skills.yaml
+  tools_registry: $AGENT_OS_HOME/registry/tools.yaml
+  workflows_registry: $AGENT_OS_HOME/registry/workflows.yaml
+  agents_registry: $AGENT_OS_HOME/registry/agents.yaml
+  mcp_registry: $AGENT_OS_HOME/registry/mcp_servers.yaml
+  memory_registry: $AGENT_OS_HOME/registry/memory_tiers.yaml

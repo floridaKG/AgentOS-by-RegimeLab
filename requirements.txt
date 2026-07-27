@@ -1,0 +1,13 @@
+# Agent OS Python dependencies — Core only
+# These power the memory system, session pipeline, and YAML-based registry.
+# Install: pip install -r requirements.txt
+#
+# For full installation with MCP support: pip install -e ".[mcp]"
+# This will install the MCP SDK (mcp>=1.0,<2.0) for the local stdio server.
+#
+# Optional adapters (uncomment if you enable the corresponding service):
+#   pinecone>=9.0.0              # Semantic memory (Pinecone vector search)
+#   neo4j>=5.20.0                # Graph memory (Neo4j knowledge graph)
+#   hindsight-client>=0.4.22     # Hindsight bank bridge + GC (see memory/adapters/hindsight/)
+
+PyYAML==6.0.2

@@ -1,0 +1,7 @@
+skills: []
+
+# Add user-owned domain skills here.
+# Example:
+# - id: source-extract
+#   path: "$VAULT_PATH/skills/source-extract/SKILL.md"
+#   trigger: "extract this source"
