@@ -599,7 +599,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_output_flags(mh)
 
     # mcp
-    mcp_parser = sub.add_parser("mcp", help="MCP server operations")
+    mcp_parser = sub.add_parser("mcp", help="MCP server operations", description="MCP server operations")
     mcp_sub = mcp_parser.add_subparsers(dest="mcp_command", metavar="<subcommand>")
 
     # mcp serve
