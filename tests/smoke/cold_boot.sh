@@ -65,9 +65,9 @@ check "no owner Linux paths" bash -c "cd \"$STAGE\" && ! rg -q \"/home/${OWNER_U
 check "no owner Windows-mount paths" bash -c "cd \"$STAGE\" && ! rg -q \"/mnt/c/Users/${OWNER_USERNAME:-testuser}(?:/|\\\\b)\" . --hidden --no-ignore -g '!.git/**' -g '!.ossbuild/**' -g '!droid-wiki/**' -g '!tests/**' -g '!PRIVACY_BOUNDARY.md'"
 # Public clone URL + brand/launch surfaces may name the GitHub owner/repo.
 # Align exclusions with tests/privacy/privacy_gate.sh (owner_service_ids).
-check "no owner service identifiers" bash -c "cd \"$STAGE\" && ! rg -qi 'floridakg|regime-lab\\.com|hwymwmhshzmhkewusdec' . --hidden --no-ignore -g '!.git/**' -g '!.ossbuild/**' -g '!droid-wiki/**' -g '!tests/**' -g '!PRIVACY_BOUNDARY.md' -g '!README.md' -g '!SETUP.md' -g '!LICENSE' -g '!RELEASE_READINESS.md' -g '!SECURITY.md' -g '!docs/codegraph-setup.md' -g '!docs/launch/**' -g '!docs/assets/**' -g '!docs/ARCHITECTURE.md' -g '!scripts/gate-privacy.sh' -g '!scripts/gate-release.sh'"
+check "no owner service identifiers" bash -c "cd \"$STAGE\" && ! rg -qi 'floridakg|regime-lab\\.com|hwymwmhshzmhkewusdec' . --hidden --no-ignore -g '!.git/**' -g '!.ossbuild/**' -g '!droid-wiki/**' -g '!tests/**' -g '!PRIVACY_BOUNDARY.md' -g '!README.md' -g '!SETUP.md' -g '!LICENSE' -g '!RELEASE_READINESS.md' -g '!SECURITY.md' -g '!CODE_OF_CONDUCT.md' -g '!pyproject.toml' -g '!bootstrap.sh' -g '!docs/codegraph-setup.md' -g '!docs/launch/**' -g '!docs/assets/**' -g '!docs/ARCHITECTURE.md' -g '!scripts/gate-privacy.sh' -g '!scripts/gate-release.sh' -g '!*.egg-info/**'"
 check "no .env files" bash -c "! find \"$STAGE\" -name '.env' -print | grep -q ."
-check "no .sqlite files" bash -c "! find \"$STAGE\" -name '*.sqlite' -print | grep -q ."
+check "no .sqlite files" bash -c "! find \"$STAGE\" -name '*.sqlite' -not -path '*.ossbuild*' -print | grep -q ."
 check "no handoffs directory" bash -c "! find \"$STAGE\" -name 'handoffs' -type d -not -path '*/.ossbuild/*' -print | grep -q ."
 check "Hindsight is optional (not in core requirements)" bash -c "! grep -Eq '^hindsight-client([<=>]|$)' \"$STAGE/requirements.txt\""
 

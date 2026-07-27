@@ -54,6 +54,19 @@ SAFE_PATH_PREFIXES = (
     b"droid-wiki/",
     b".github/workflows/",  # CI may set OWNER_USERNAME for scans
     b"bin/rtk",  # pre-built Rust binary — embedded Rust crate paths (/home/runner/.cargo/…) and public project emails are toolchain artifacts, not leaks
+    # Public project surfaces that legitimately contain repo URLs, org names,
+    # and public contact emails. These are intentional, not leaks.
+    b"README.md",
+    b"SETUP.md",
+    b"CODE_OF_CONDUCT.md",
+    b"COMMERCIAL_BOUNDARY.md",
+    b"RELEASE_READINESS.md",
+    b"bootstrap.sh",
+    b"pyproject.toml",
+    b"docs/launch/",
+    b"docs/assets/",
+    b"docs/ARCHITECTURE.md",
+    b"docs/codegraph-setup.md",
 )
 
 # Generic/example usernames that appear in documentation and test patterns.

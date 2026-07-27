@@ -191,7 +191,10 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install Python dependencies
-        run: pip install -e ".[mcp,dev]"
+        run: |
+          pip install -r requirements.txt
+          pip install mcp
+          pip install pytest
       - name: Verify CLI entry points
         run: |
           echo "--- Verifying CLI entry points ---"
