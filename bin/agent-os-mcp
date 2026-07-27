@@ -1,0 +1,14 @@
+#!/bin/bash
+# agent-os-mcp — stable MCP stdio launcher
+# Routes to the installed package entry point or falls back to running
+# the agent_os.mcp_server module directly.
+
+set -e
+
+# Resolve the repository root
+REPO_ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+
+# Run the package from this distribution so a different global executable
+# cannot shadow the OSS MCP server.
+export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH}"
+exec /usr/bin/env python3 -m agent_os.mcp_server "$@"

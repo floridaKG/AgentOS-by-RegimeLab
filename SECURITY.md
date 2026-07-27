@@ -11,9 +11,11 @@ There is no long-term support branch for v1.
 
 Please report security issues privately:
 
-1. Use GitHub **Security Advisories** for this repository (preferred), or
-2. Contact the repository owner via their GitHub profile on the org that
-   publishes this project.
+1. Use the repository's
+   [GitHub Security Advisories](https://github.com/floridaKG/AgentOS-by-RegimeLab/security/advisories/new)
+   page (preferred), or
+2. Contact [@floridaKG](https://github.com/floridaKG) privately, or email
+   `RegimeLab@proton.me`.
 
 Include:
 

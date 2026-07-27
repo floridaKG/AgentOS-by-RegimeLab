@@ -19,13 +19,19 @@ _load_packet() {
     local pkt="$1"
     if [ -f "$pkt" ] && [[ "$pkt" == *.json ]]; then
         local fields
-        fields=$(python3 -c "
-import json,sys
-p=json.load(open(sys.argv[1]))
-for k in ['workflow_name','run_id','workspace','goal_file','objective','scope','boundaries','input_files','output_files','success_criteria','ownership','prompt_hash']:
-    v = p.get(k,'')
-    print(f'WF_{k.upper()}={v}')
-" "$pkt") && eval "$fields"
+        fields=$(python3 - "$pkt" <<'PY'
+import json
+import shlex
+import sys
+
+p = json.load(open(sys.argv[1]))
+for k in ['workflow_name', 'run_id', 'workspace', 'goal_file', 'objective',
+          'scope', 'boundaries', 'input_files', 'output_files',
+          'success_criteria', 'ownership', 'prompt_hash']:
+    v = p.get(k, '')
+    print(f"WF_{k.upper()}={shlex.quote(str(v))}")
+PY
+) && eval "$fields"
         export WORKFLOW_NAME="$WF_WORKFLOW_NAME"
         export WF_RUN_ID="$WF_RUN_ID"
         export WF_WORKSPACE="$WF_WORKSPACE"

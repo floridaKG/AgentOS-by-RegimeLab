@@ -22,10 +22,12 @@ allowlist:
     - README.md
     - RELEASE_READINESS.md
     - SETUP.md
+    - bootstrap.sh
     - install.sh
     - .env.template
     - config.env.template
     - requirements.txt
+    - pyproject.toml
     - CODE_OF_CONDUCT.md
     - CONTRIBUTING.md
     - SECURITY.md
@@ -37,6 +39,8 @@ allowlist:
     source: $AGENT_OS_HOME/bin
     files:
       - agent-os
+      - agent-os-mcp
+      - agent-os-setup
       - memory-inject
       - memory-lt
       - memory-promote
@@ -190,6 +194,7 @@ allowlist:
     files:
       - agent-os
       - agent-os-boot.sh
+      - agent-os-setup.sh
       - agent-os-health.sh
       - agent-os-verify.sh
       - memory-recall-safe.py
@@ -249,6 +254,7 @@ allowlist:
       - SYSTEM_ARCHITECTURE_SOURCE_OF_TRUTH.md
       - OPTIONAL_BACKENDS.md
       - GETTING_STARTED.md
+      - MCP.md
       - index.html
       - .nojekyll
       # Architecture marketing assets (logo binaries intentionally NOT shipped —
@@ -277,6 +283,16 @@ allowlist:
       - test-init-vault.sh
       - privacy/history_gate.sh
       - privacy/privacy_gate_negative.sh
+      - cli/__init__.py
+      - cli/test_capabilities.py
+      - cli/test_config.py
+      - cli/test_diagnostics.py
+      - cli/test_mcp_cli.py
+      - cli/test_memory.py
+      - cli/test_models.py
+      - cli/test_paths.py
+      - mcp/__init__.py
+      - mcp/test_mcp_server.py
       - security/ci_docs_hardening.sh
       - security/test_runtime_security.py
       - test-hindsight-adapter.sh

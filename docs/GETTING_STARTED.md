@@ -29,7 +29,9 @@ so you can see how `recall` works.
 ### Write a record
 
 ```bash
-echo "The login endpoint at /api/auth/login rate-limits after 5 failed attempts per IP address. The cooldown is 15 minutes. This was confirmed by reading the rate limiter middleware in src/middleware/rate_limiter.py." > /tmp/demo_lesson.txt
+DEMO_FILE="$AGENT_OS_HOME/.local/state/agent-os/demo_lesson.txt"
+mkdir -p "$(dirname "$DEMO_FILE")"
+echo "The login endpoint at /api/auth/login rate-limits after 5 failed attempts per IP address. The cooldown is 15 minutes. This was confirmed by reading the rate limiter middleware in src/middleware/rate_limiter.py." > "$DEMO_FILE"
 
 memory-st write \
   --run-id "getting-started-001" \
@@ -38,7 +40,7 @@ memory-st write \
   --intent LESSON \
   --kind observation \
   --summary "Login endpoint rate-limits at 5 attempts per IP, 15min cooldown" \
-  --content-file /tmp/demo_lesson.txt \
+  --content-file "$DEMO_FILE" \
   --source-ref "getting-started:demo"
 ```
 
@@ -185,12 +187,16 @@ Once ACP dispatch works, try a multi-agent workflow:
 
 ```bash
 # Swarm: 3 parallel explorers + synthesis reviewer
-echo "What error handling patterns exist in this codebase?" > /tmp/task.txt
-agent-workflow swarm /tmp/task.txt 3
+TASK_FILE="$AGENT_OS_HOME/.local/state/agent-os/task.txt"
+mkdir -p "$(dirname "$TASK_FILE")"
+echo "What error handling patterns exist in this codebase?" > "$TASK_FILE"
+agent-workflow swarm "$TASK_FILE" 3
 
 # Council: 3 independent opinions + moderator
-echo "Should we use async or sync for the data pipeline?" > /tmp/problem.txt
-agent-workflow council /tmp/problem.txt
+PROBLEM_FILE="$AGENT_OS_HOME/.local/state/agent-os/problem.txt"
+mkdir -p "$(dirname "$PROBLEM_FILE")"
+echo "Should we use async or sync for the data pipeline?" > "$PROBLEM_FILE"
+agent-workflow council "$PROBLEM_FILE"
 ```
 
 Workflows use the roles you configured in Step 3. If a role's provider isn't
@@ -228,6 +234,7 @@ backends later.
 | Configure MOE panels | Edit `~/.config/agent-workflows/panels.toml` |
 | See all available skills | `cat $AGENT_OS_HOME/registry/skills.yaml` |
 | Run the full setup guide | [SETUP.md](../SETUP.md) |
+| Set up MCP server | [docs/MCP.md](MCP.md) |
 
 ## Troubleshooting
 

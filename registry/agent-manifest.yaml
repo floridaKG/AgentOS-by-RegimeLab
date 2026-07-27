@@ -1,6 +1,6 @@
 # Agent OS Public Manifest
 # Auto-generated summary of the public distribution.
-# Last rebuilt: 2026-07-14
+# Last rebuilt: 2026-07-27
 
 metadata:
   version: 1.0.0
@@ -9,10 +9,10 @@ metadata:
 
 summary:
   skills: 15
-  tools: 30
+  tools: 32
   workflows: 9
-  agents: 3
-  mcp_servers: 0
+  agents: 10
+  mcp_servers: 1
   memory_tiers: 3
 
 source:

@@ -17,11 +17,26 @@ the provider/model mapping in `roles.toml` if needed.
 
 ## How model flows from roles.toml
 
-roles.toml defines per-role: `chain[0] = "provider:model"` (e.g. `opencode:opencode/deepseek-v4-flash-free`).
+The public template defines per-role `provider` and `model` fields, for example:
+
+```toml
+[executor]
+provider = "codex"
+model = "default"
+```
+
+The runtime also accepts the legacy `chain = ["provider:model"]` form for
+backward compatibility.
 
 The adapter splits the configured provider/model, then:
 - For claude: passes `--model "$MODEL"` to acpx. Works.
-- For opencode/codex: the flag is suppressed. The MODEL value is logged but ignored.
+- For opencode/codex: the flag is suppressed because their ACP adapters do not
+  advertise generic model selection. Configure the model in the provider CLI.
+
+The OSS distribution keeps provider routing extensible. Cline, Droid, Pi,
+Hermes, OMP, Cursor, and Grok may be registered as experimental integrations,
+but each requires its ACPx profile, authentication, and provider-specific model
+configuration before it can be used.
 
 ## The bug that was fixed
 

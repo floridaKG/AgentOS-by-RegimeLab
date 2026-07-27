@@ -143,11 +143,12 @@ if [ ! -f "$CONFIG_FILE" ]; then
 # Agent OS home directory (set by installer)
 export AGENT_OS_HOME="AGENT_OS_HOME_PLACEHOLDER"
 
-# LLM Provider (required)
+# Optional default provider for integrations and workflow tooling
 # Supported: openai, anthropic, openrouter
 export LLM_PROVIDER="openai"
 
-# LLM API Key (required — get from your provider)
+# Optional API key. Configure and authenticate the provider CLI separately
+# before using ACP multi-agent dispatch.
 # export LLM_API_KEY="your-api-key-here"
 
 # Optional: Knowledge vault path
@@ -240,10 +241,61 @@ else
   skip "No requirements.txt found"
 fi
 
+# ── Install the packaged CLI and MCP extra ──
+echo ""
+echo "--- Installing packaged CLI and MCP support ---"
+if [ "$TEST_MODE" = "1" ]; then
+  skip "Packaged CLI and MCP extra (test mode)"
+elif [ -f "$AGENT_OS_HOME/pyproject.toml" ]; then
+  PACKAGE_STATUS=0
+  if [ -n "${VIRTUAL_ENV:-}" ]; then
+    $PYTHON -m pip install -e "$AGENT_OS_HOME[mcp]" --quiet 2>&1 || PACKAGE_STATUS=$?
+  else
+    $PYTHON -m pip install --user -e "$AGENT_OS_HOME[mcp]" --quiet 2>&1 || PACKAGE_STATUS=$?
+  fi
+  if [ "$PACKAGE_STATUS" -ne 0 ]; then
+    fail "Packaged CLI/MCP installation failed (exit $PACKAGE_STATUS). Run: $PYTHON -m pip install -e '$AGENT_OS_HOME[mcp]'"
+  else
+    pass "Packaged CLI and MCP support installed"
+  fi
+else
+  skip "No pyproject.toml found"
+fi
+
+# ── Verify MCP dependency and entrypoint ──
+echo ""
+echo "--- Verifying MCP setup ---"
+if [ "$TEST_MODE" = "1" ]; then
+  skip "MCP verification (test mode)"
+else
+  # Check MCP package is available
+  if $PYTHON -c "import mcp" 2>/dev/null; then
+    MCP_VERSION=$($PYTHON -c "import mcp; print(getattr(mcp, '__version__', 'installed'))" 2>/dev/null || echo "installed")
+    pass "MCP package available (version: $MCP_VERSION)"
+  else
+    echo "  WARNING: MCP package not installed. Run: pip install mcp"
+    echo "  MCP server will not work without it."
+  fi
+
+  # Verify agent-os-mcp entrypoint
+  if [ -f "$AGENT_OS_HOME/bin/agent-os-mcp" ]; then
+    pass "agent-os-mcp entrypoint exists"
+  else
+    echo "  MISSING: bin/agent-os-mcp"
+  fi
+
+  # Verify agent-os CLI entrypoint
+  if [ -f "$AGENT_OS_HOME/bin/agent-os" ]; then
+    pass "agent-os CLI entrypoint exists"
+  else
+    echo "  MISSING: bin/agent-os"
+  fi
+fi
+
 # ── Verify bin facades ──
 echo ""
 echo "--- Verifying CLI facades ---"
-for cmd in memory-st memory-lt memory-recall memory-recall-safe memory-inject memory-promote agent-voice team agent-workflow hindsight-bridge hindsight-gc hindsight-health rtk; do
+for cmd in memory-st memory-lt memory-recall memory-recall-safe memory-inject memory-promote agent-voice team agent-workflow hindsight-bridge hindsight-gc hindsight-health rtk agent-os agent-os-mcp agent-os-setup; do
   if [ -f "$AGENT_OS_HOME/bin/$cmd" ]; then
     chmod +x "$AGENT_OS_HOME/bin/$cmd" 2>/dev/null || true
     pass "bin/$cmd"
@@ -255,7 +307,7 @@ done
 # ── Verify scripts ──
 echo ""
 echo "--- Verifying scripts ---"
-for script in agent-os-health.sh agent-os-verify.sh registry-check.py; do
+for script in agent-os-health.sh agent-os-verify.sh registry-check.py agent-os-setup.sh; do
   if [ -f "$AGENT_OS_HOME/scripts/$script" ]; then
     pass "scripts/$script"
   else
@@ -526,6 +578,8 @@ else
     MEMORY_PY="$AGENT_OS_HOME/memory/core/short_term.py"
     DEMO_DIR="${HOME}/.local/state/agent-os/memory"
     mkdir -p "$DEMO_DIR"
+    export AGENT_OS_QUICKSTART_DIR="${HOME}/.local/state/agent-os/quickstart"
+    mkdir -p "$AGENT_OS_QUICKSTART_DIR"
 
     # Seed records via Python to avoid shell escaping issues
     python3 -c "
@@ -555,7 +609,8 @@ records = [
     },
 ]
 for i, rec in enumerate(records):
-    content_file = f'/tmp/agent_os_quickstart_{i}.txt'
+    quickstart_dir = os.environ['AGENT_OS_QUICKSTART_DIR']
+    content_file = os.path.join(quickstart_dir, f'quickstart_{i}.txt')
     with open(content_file, 'w') as f:
         f.write(rec['content'])
     result = subprocess.run(
@@ -597,15 +652,17 @@ if [ "$WITH_SETUP_MEMORY" = "1" ]; then
   echo "  Memory backends: interactive setup completed (see docs/OPTIONAL_BACKENDS.md)"
 fi
 echo "  CLI facades: bin/ ($(ls "$AGENT_OS_HOME/bin/" 2>/dev/null | wc -l) commands)"
+echo "  MCP server: bin/agent-os-mcp (stdio transport)"
 
 echo ""
 echo "=== Next Steps ==="
-echo "1. Add your LLM API key to $SECRETS_FILE"
-echo "2. Source the config: source $CONFIG_FILE"
-echo "3. Read the getting started guide: docs/GETTING_STARTED.md"
+echo "1. Source the config: source $CONFIG_FILE"
+echo "2. Verify local core: agent-os doctor"
+echo "3. Run setup checks: agent-os-setup"
 echo "4. (Optional) Seed demo records: ./install.sh --quickstart"
 echo "5. Add bin/ to PATH: auto-configured in ~/.bashrc (or check shell profile)"
-echo "6. Verify: bash $AGENT_OS_HOME/scripts/agent-os-health.sh"
+echo "6. MCP server: agent-os mcp serve (or bin/agent-os-mcp)"
+echo "7. MCP install: agent-os mcp install --client claude"
 echo ""
 echo "=== Optional Setup ==="
 echo "  ACPx (agent launcher): npm install -g acpx"

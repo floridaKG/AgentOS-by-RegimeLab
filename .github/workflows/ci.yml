@@ -176,3 +176,51 @@ jobs:
             exit 1
           fi
           echo "PASS: Git archive is clean (no .git directory)"
+
+  cli-mcp-check:
+    name: CLI & MCP Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Install Python dependencies
+        run: pip install -e ".[mcp,dev]"
+      - name: Verify CLI entry points
+        run: |
+          echo "--- Verifying CLI entry points ---"
+          for cmd in agent-os agent-os-mcp; do
+            if [ -x "bin/$cmd" ]; then
+              echo "  PASS: bin/$cmd"
+            else
+              echo "  FAIL: bin/$cmd not found or not executable"
+              exit 1
+            fi
+          done
+      - name: Verify CLI commands
+        run: |
+          echo "--- Verifying CLI commands ---"
+          export PYTHONPATH="${{ github.workspace }}:${PYTHONPATH}"
+          # Test agent-os CLI
+          python3 -m agent_os --help | grep -q "Agent OS"
+          echo "  PASS: agent-os CLI --help"
+          # Test agent-os mcp subcommand
+          python3 -m agent_os mcp --help | grep -q "MCP server operations"
+          echo "  PASS: agent-os mcp --help"
+      - name: Verify MCP server import
+        run: |
+          echo "--- Verifying MCP server ---"
+          export PYTHONPATH="${{ github.workspace }}:${PYTHONPATH}"
+          python3 -c "from agent_os.mcp_server import mcp; print('  PASS: MCP server imports successfully')"
+      - name: Build distributable wheel
+        run: |
+          python3 -m pip install wheel
+          python3 -m pip wheel . --no-deps --no-build-isolation --wheel-dir /tmp/agent-os-wheel
+      - name: Run CLI tests
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m pytest tests/cli -q

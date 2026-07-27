@@ -44,8 +44,9 @@ an individual is officially representing the community in public spaces.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the project team. All complaints will be reviewed and investigated
-and will result in a response that is deemed necessary and appropriate.
+reported privately to [@floridaKG](https://github.com/floridaKG) or by email to
+`RegimeLab@proton.me`. All complaints will be reviewed and investigated and
+will result in a response that is deemed necessary and appropriate.
 
 ## Attribution
 

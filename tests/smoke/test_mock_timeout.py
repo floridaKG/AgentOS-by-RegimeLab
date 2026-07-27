@@ -32,6 +32,9 @@ class MockTimeoutTest(unittest.TestCase):
         self.old_home = os.environ.get("AGENT_OS_HOME")
         os.environ["AGENT_OS_HOME"] = str(self.home)
 
+        # acp_common derives its state paths from AGENT_OS_HOME at import time.
+        # Reload it for each isolated test home.
+        sys.modules.pop("acp_common", None)
         self.send = load_module(
             f"acp_send_timeout_{id(self)}", SEND_SCRIPT
         )

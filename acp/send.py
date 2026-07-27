@@ -207,22 +207,11 @@ def main():
     # Soft registry validation (optional PyYAML)
     agent_ids = _load_agent_ids()
     if agent_ids:
+        local_agent_ids = {"worker", "orchestrator", "router"}
         if (
             args.target_agent_id
             and args.target_agent_id not in agent_ids
-            and args.target_agent_id
-            not in {
-                "claude",
-                "codex",
-                "opencode",
-                "droid",
-                "pi",
-                "hermes",
-                "cline",
-                "omp",
-                "cursor",
-                "grok",
-            }
+            and args.target_agent_id not in local_agent_ids
         ):
             print(
                 f"ACP_SEND: ERROR — target agent {args.target_agent_id!r} "
@@ -233,19 +222,7 @@ def main():
         if (
             caller_agent_id not in {"worker", "orchestrator", "router"}
             and caller_agent_id not in agent_ids
-            and caller_agent_id
-            not in {
-                "claude",
-                "codex",
-                "opencode",
-                "droid",
-                "pi",
-                "hermes",
-                "cline",
-                "omp",
-                "cursor",
-                "grok",
-            }
+            and caller_agent_id not in local_agent_ids
         ):
             print(
                 f"ACP_SEND: ERROR — caller agent {caller_agent_id!r} is not registered",

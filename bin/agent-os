@@ -1,3 +1,14 @@
 #!/bin/bash
 # agent-os — unified CLI entry point
-exec /usr/bin/env python3 "$(dirname "$(dirname "$(readlink -f "$0")")")/scripts/agent-os" "$@"
+# Routes to the new Python package (agent_os.cli) for core commands,
+# or falls back to scripts/agent-os for legacy advanced commands.
+
+set -e
+
+# Resolve the repository root
+REPO_ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+
+# Run the package from this distribution so a different global `agent-os`
+# executable cannot shadow the OSS CLI.
+export PYTHONPATH="${REPO_ROOT}:${PYTHONPATH}"
+exec /usr/bin/env python3 -m agent_os "$@"

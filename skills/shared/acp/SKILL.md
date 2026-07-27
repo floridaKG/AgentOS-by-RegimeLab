@@ -18,7 +18,7 @@ last_reviewed: 2026-06-15
 
 # ACP -- Cross-Agent Task Dispatch
 
-This skill is agent-agnostic. Any agent with WSL shell access can use it.
+This skill is agent-agnostic. Any agent with shell access can use it.
 The CLI `acp-task` is the interface. The daemon (tmux session `acp` running
 `$AGENT_OS_HOME/bin/acp-daemon`) picks up envelopes, dispatches to the right agent via
 `roles.toml`, and routes results back.
@@ -167,7 +167,7 @@ preserved across acp/compute/acp chain.
 
 The CLI is `acp-task` in WSL at `$AGENT_OS_HOME/bin/acp-task`.
 
-### From inside WSL (any agent in a WSL shell)
+### From a Linux shell (including WSL2)
 
 ```bash
 acp-task <role> <workspace> "<objective>" [--body "..."] [--wait]

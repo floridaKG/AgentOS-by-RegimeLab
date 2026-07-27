@@ -39,6 +39,7 @@ your agents use it.
 | **Memory Layer** | Combines short-term events, semantic search, and graph relationships | Gives agents relevant context without dumping full history |
 | **ACP (Agent Communication Protocol)** | Durable task ledger from queue to completion | Makes agent work resumable, inspectable, and auditable |
 | **Agent Harness** | Launches the selected agent runtime with the right tools and context | Different models and CLIs handle the work they're best suited for |
+| **MCP Server** | Exposes memory and diagnostics over stdio transport | Allows AI coding agents to read/write memory using MCP protocol |
 
 ## Request Flow
 

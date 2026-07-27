@@ -209,11 +209,13 @@ configuration (see Codex documentation for the exact file location):
 
 1. Write a test memory record:
    ```bash
-   echo "This is a test lesson" > /tmp/test_lesson.txt
+   TEST_FILE="$AGENT_OS_HOME/.local/state/agent-os/test_lesson.txt"
+   mkdir -p "$(dirname "$TEST_FILE")"
+   echo "This is a test lesson" > "$TEST_FILE"
    memory-st write --run-id test-001 --agent-id test --workspace test \
      --intent LESSON --kind observation \
      --summary "The login endpoint rate-limits after 5 failed attempts" \
-     --content-file /tmp/test_lesson.txt --source-ref test:verify
+     --content-file "$TEST_FILE" --source-ref test:verify
    ```
 
 2. Run the hook manually:

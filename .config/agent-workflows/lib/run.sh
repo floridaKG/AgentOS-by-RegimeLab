@@ -122,14 +122,13 @@ _validate() {
 # Run a single (provider, model) attempt. Writes to $out_file on success.
 # Dispatches via acpx (the same path as acp_to_run_agent.sh) so the .sh workflows
 # share ONE dispatch mechanism and ONE model-id convention with the ACP capability
-# layer. Supported agents: claude, codex, opencode.
+# layer. Provider/profile names are setup-driven and may be custom safe names.
 _run_one() {
     local provider="$1" model="$2" title="$3" prompt_file="$4" out_file="$5"
 
     # Provider validation — write error to out_file for _validate to catch.
     case "$provider" in
-        opencode|codex|claude) ;;
-        *)
+        ''|*[!a-zA-Z0-9._-]*)
             echo "ERROR: unknown provider '$provider'" > "$out_file"
             return 0
             ;;
@@ -242,7 +241,7 @@ run_role() {
 
 # Run a single member (like _run_one but with validation and logging).
 # Signature: run_member <provider> <model> <title> <prompt_file> <out_file> [readonly]
-#   provider   - one of: opencode, codex, claude
+#   provider   - ACPx provider/profile name, including custom safe-named agents
 #   model      - model identifier (e.g. deepseek-v4-flash)
 #   title      - human-readable label for this attempt
 #   prompt_file - path to prompt file
@@ -257,11 +256,11 @@ run_member() {
     local t0
     t0=$(date +%s)
 
-    # Validate provider is in the allowed enum FIRST
+    # Validate provider syntax before dispatch. Provider/profile names are
+    # setup-driven and may be custom ACPx agents.
     case "$provider" in
-        opencode|codex|claude) ;;
-        *)
-            echo "ERROR: unknown provider '$provider'. Allowed providers: opencode, codex, claude" >&2
+        ''|*[!a-zA-Z0-9._-]*)
+            echo "ERROR: invalid provider '$provider'. Use a safe ACPx profile name." >&2
             printf '{"ts":"%s","provider":"%s","model":"%s","status":"failed","duration_s":0,"bytes":0,"error_class":"invalid_provider"}\n' \
                 "$(date -u +%FT%TZ)" "$provider" "$model" >> "$RUN_LOG"
             return 1

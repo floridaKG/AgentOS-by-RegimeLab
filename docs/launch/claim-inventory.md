@@ -1,6 +1,6 @@
 # Public claim inventory — Agent OS OSS
 
-**Date:** 2026-07-16  
+**Date:** 2026-07-27
 **Tree:** public OSS staging repo (`AgentOS-by-RegimeLab`) @ post-diagram commits  
 
 **Spec:** `2026-07-02-agent-os-oss-marketing-and-github-launch`  
@@ -77,20 +77,16 @@ CI runs privacy gate, history gate, runtime security tests, and ACP mock tests.
 It is **not** a guarantee of full functional coverage or multi-agent end-to-end
 success. README should not imply “production CI green = production-ready.”
 
-## Open fixes tracked for package 2
+## Historical package checklist
 
-1. README: is/is-not + bounded harness framing + exact write/recall + video + limitations  
-2. README: qualify ACP/MOE/injection as setup-dependent  
-3. `memory/README.md`: remove “works out of the box”  
-4. `docs/ARCHITECTURE.md`: soften “any agent / every agent / enforces”  
-5. `docs/assets/BRAND.md`: no private filesystem paths  
-6. Stage `docs/launch/x-article.md`  
-7. Cold-path capture (package 3)
+The package checklist above records the original launch work. Current release
+validation is maintained by the repository's release, privacy, security, and
+clean-room gates.
 
 ## Sign-off
 
 | Role | Status |
 |---|---|
-| Executor inventory | Complete for this pass |
-| After package 2 edits | Re-run static greps |
-| Adversarial (package 4) | Pending |
+| Executor inventory | Complete |
+| Static/privacy validation | Maintained by CI and release gates |
+| Adversarial review | Complete for current release candidate |

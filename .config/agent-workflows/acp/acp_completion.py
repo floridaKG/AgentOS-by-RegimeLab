@@ -16,7 +16,11 @@ import time
 from pathlib import Path
 
 AGENT_OS_HOME = os.environ.get("AGENT_OS_HOME", os.path.join(os.path.expanduser("~"), "agent-os"))
-RUNS_DIR = os.path.join(AGENT_OS_HOME, ".local", "state", "agent-os", "acp", "runs")
+ACP_ROOT = os.environ.get(
+    "AGENT_OS_ACP_ROOT",
+    os.path.join(AGENT_OS_HOME, ".local", "state", "agent-os", "acp"),
+)
+RUNS_DIR = os.path.join(ACP_ROOT, "runs")
 
 # Regex patterns for safe identifiers (same contract as acp_send.py / acp-daemon)
 RUN_ID_RE = re.compile(r'^task-\d{10}-[a-f0-9]{8}$')

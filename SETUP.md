@@ -9,6 +9,17 @@ This guide covers installation, configuration, verification, and optional
 integrations. The default installation works entirely locally with zero
 external services.
 
+
+For the fastest setup, review and run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/floridaKG/AgentOS-by-RegimeLab/main/bootstrap.sh | bash
+```
+
+This clones into `~/.local/share/agent-os`, runs the installer, and leaves the
+checkout available for ACP workflow installation. Pin a release tag or review
+the script first when supply-chain control is required. After installation,
+run `agent-os-setup` for provider and ACPx readiness checks.
 ## Prerequisites
 
 ### Required (Local Core)
@@ -16,7 +27,8 @@ external services.
 - **Python 3.10+ and pip** — check with `python3 --version` and `python3 -m pip --version`
 - **Git** — check with `git --version`
 - **Bash** — standard on Linux and WSL2
-- **One LLM provider API key** — for the agent CLI you use (Claude Code, Codex, OpenCode, etc.)
+- **No API key for the local core**. An authenticated agent CLI and provider API
+  key are required only when you enable ACP multi-agent dispatch.
 
 ### Optional (not part of Local Core)
 
@@ -33,11 +45,14 @@ external services.
 |---|---|
 | Linux (Debian/Ubuntu, Fedora, Arch) | ✅ Tested (v1 supported) |
 | WSL2 (Windows Subsystem for Linux) | ✅ Tested (v1 supported) |
-| macOS | ⚠️ Not verified — unsupported for v1 claims |
+| macOS | ⚠️ ACPx may run, but the Agent OS daemon/workflows are not verified |
 
 ## Windows Users (WSL2)
 
-Agent OS is a Linux-native CLI harness. Windows users **must install WSL2**.
+Agent OS's full CLI harness and daemon are Linux-native. Windows users
+**must install WSL2**. ACP and ACPx themselves are cross-platform in principle,
+but the surrounding Agent OS shell workflows are currently verified only on
+Linux and WSL2.
 
 1. **Install WSL2:**
    ```powershell
@@ -70,6 +85,26 @@ cd agent-os
 Or download and extract a release archive, then run `./install.sh` from the
 extracted directory.
 
+### MCP Server Setup
+
+After installation, you can set up the MCP server for your AI coding agent:
+
+```bash
+# Start the MCP server
+agent-os mcp serve
+
+# Install MCP config for Claude Code
+agent-os mcp install --client claude
+
+# Install MCP config for Codex
+agent-os mcp install --client codex
+
+# Install MCP config for OpenCode
+agent-os mcp install --client opencode
+```
+
+See [docs/MCP.md](docs/MCP.md) for full documentation.
+
 ## What the Installer Does
 
 1. Checks prerequisites (Python 3.10+, Git, Bash)
@@ -87,6 +122,11 @@ extracted directory.
 - CodeGraph (structural code queries) — external npm package, install separately
 - Shell profile edits — skip with `./install.sh --no-path` if you manage PATH yourself
 
+The Python wheel provides the packaged local CLI and MCP core. Multi-agent ACP
+workflows are distributed with the full repository checkout and installed by
+`install.sh`; `pip install agent-os` alone does not provide `acp-task`,
+`acp-daemon`, or the workflow configuration.
+
 The installer is **idempotent** — running it again is safe and will not
 overwrite existing configuration files.
 
@@ -102,13 +142,14 @@ Skips pip install and interactive prompts. Useful for CI and verification.
 
 ### Minimum Configuration (Local-Core Only)
 
-After installation, edit `~/.config/agent-os/config.env`:
+The local core works without provider configuration. For ACP dispatch, edit
+`~/.config/agent-os/config.env` and authenticate the provider CLI separately:
 
 ```bash
 # Source this file in your shell profile
 source ~/.config/agent-os/config.env
 
-# Required: your LLM provider
+# Used by optional integrations and workflow tooling
 export LLM_PROVIDER="openai"    # or "anthropic", "openrouter"
 export LLM_API_KEY="your-api-key-here"
 ```
@@ -302,8 +343,10 @@ memory-st write --run-id test-run --agent-id test-agent --workspace home \
 memory-recall --text "test lesson"
 
 # Dry-run packet memory injection
-printf '{"workspace":"home","intent":"OPS","objective":"test lesson"}' > /tmp/agent-os-packet.json
-memory-inject --packet /tmp/agent-os-packet.json --dry-run
+PACKET_FILE="$AGENT_OS_HOME/.local/state/agent-os/agent-os-packet.json"
+mkdir -p "$(dirname "$PACKET_FILE")"
+printf '{"workspace":"home","intent":"OPS","objective":"test lesson"}' > "$PACKET_FILE"
+memory-inject --packet "$PACKET_FILE" --dry-run
 
 # Check memory health
 bash $AGENT_OS_HOME/scripts/agent-os-health.sh
@@ -376,6 +419,24 @@ npm install -g acpx
 
 Requires Node.js 18+ and npm. ACPx provides cooperative cancellation, named
 parallel sessions, crash reconnect, and cross-model DAG orchestration.
+
+### Adding another ACP-compatible agent
+
+Agent OS is extensible. The built-in registry includes common integrations,
+but users can add any ACP-compatible agent that their installed ACPx supports:
+
+1. Add an agent entry under `~/.config/agent-os/registry/agents.yaml` (or the
+   repository `registry/agents.yaml` before installation).
+2. Add a role mapping in `~/.config/agent-workflows/roles.toml`, using the ACPx
+   agent/profile name as `provider` and the provider's advertised model ID as
+   `model`.
+3. Verify the profile directly with `acpx <agent> exec "ping"` before using it
+   in a workflow.
+
+Custom provider names are accepted when they contain only letters, numbers,
+periods, underscores, or hyphens. Agent OS does not assume every provider
+supports the same model-selection flags, so provider-specific setup remains
+the source of truth.
 
 ### Configuring MOE and Multi-Agent Panels
 

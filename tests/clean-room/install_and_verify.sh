@@ -66,6 +66,7 @@ check "config.env has AGENT_OS_HOME" bash -c 'grep -q "AGENT_OS_HOME" "'"$CLEANR
 echo ""
 echo "--- Step 3: Verify structure ---"
 check "AGENTS.md exists" test -f "$STAGE/AGENTS.md"
+check "bootstrap.sh exists" test -f "$STAGE/bootstrap.sh"
 check "BOOT.md exists" test -f "$STAGE/BOOT.md"
 check "README.md exists" test -f "$STAGE/README.md"
 check "SETUP.md exists" test -f "$STAGE/SETUP.md"
@@ -104,7 +105,7 @@ check "registry-check.py" test -f "$STAGE/scripts/registry-check.py"
 # ── Step 7: Verify CLI facades ──
 echo ""
 echo "--- Step 7: Verify CLI facades ---"
-for cmd in memory-st memory-lt memory-recall memory-recall-safe memory-inject memory-promote agent-voice team agent-workflow; do
+for cmd in memory-st memory-lt memory-recall memory-recall-safe memory-inject memory-promote agent-voice team agent-workflow agent-os agent-os-mcp agent-os-setup; do
   check "bin/$cmd" test -f "$STAGE/bin/$cmd"
 done
 
@@ -166,13 +167,20 @@ check "idempotent secrets preserved" bash -c 'test -f "'"$CLEANROOM_HOME"'/.conf
 # ── Step 14: CLI availability in clean-room ──
 echo ""
 echo "--- Step 14: CLI availability ---"
-for cmd in memory-st memory-lt memory-recall memory-recall-safe memory-inject memory-promote agent-voice team agent-workflow; do
+for cmd in memory-st memory-lt memory-recall memory-recall-safe memory-inject memory-promote agent-voice team agent-workflow agent-os agent-os-mcp agent-os-setup; do
   check "bin/$cmd is executable" bash -c "test -x '$STAGE/bin/$cmd'"
 done
 check "MOE panels installed" test -f "$CLEANROOM_HOME/.config/agent-workflows/panels.toml"
 check "MOE aliases installed" test -f "$CLEANROOM_HOME/.config/agent-workflows/model_aliases.toml"
 check "agent-os-health.sh is executable" bash -c "test -x '$STAGE/scripts/agent-os-health.sh'"
 check "agent-os-verify.sh is executable" bash -c "test -x '$STAGE/scripts/agent-os-verify.sh'"
+
+# ── Step 14b: MCP availability ──
+echo ""
+echo "--- Step 14b: MCP availability ---"
+check "agent-os CLI has mcp subcommand" bash -c "AGENT_OS_HOME='$STAGE' HOME='$CLEANROOM_HOME' PYTHONPATH='$STAGE:${PYTHONPATH:-}' python3 -m agent_os mcp --help 2>&1 | grep -q 'serve.*Start the MCP stdio server'"
+check "agent-os-mcp launcher exists" bash -c "test -x '$STAGE/bin/agent-os-mcp'"
+check "docs/MCP.md exists" test -f "$STAGE/docs/MCP.md"
 
 # ── Step 15: No original-tree mutation ──
 echo ""

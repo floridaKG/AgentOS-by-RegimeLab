@@ -8,6 +8,16 @@ tools:
     purpose: Unified CLI — dispatch to 18 subsystems (memory, acp, skill, registry, etc.)
     invocation: agent-os <command> [options]
 
+  - id: agent-os-mcp
+    binary: $AGENT_OS_HOME/bin/agent-os-mcp
+    purpose: Local stdio MCP server for memory and diagnostics
+    invocation: agent-os-mcp
+
+  - id: agent-os-setup
+    binary: $AGENT_OS_HOME/bin/agent-os-setup
+    purpose: Detect local agent CLIs, ACPx, and setup requirements
+    invocation: agent-os-setup
+
   - id: skill-rank
     binary: $AGENT_OS_HOME/scripts/skill-rank
     purpose: Rank skills by relevance to a task query

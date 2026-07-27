@@ -67,6 +67,24 @@ class CommandRiskTests(unittest.TestCase):
         self.assertEqual(self.classify("date")["recommendation"], "allow")
         self.assertEqual(self.classify("git status --short")["recommendation"], "allow")
 
+    def test_workflow_packet_values_cannot_execute_shell(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            marker = root / "pwned"
+            packet = root / "packet.json"
+            packet.write_text(json.dumps({
+                "workflow_name": "test",
+                "objective": f"$(touch {marker}); echo unsafe",
+            }))
+            subprocess.run(
+                ["bash", str(REPO / "bin/agent-workflow"), str(packet), "invalid"],
+                cwd=REPO,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertFalse(marker.exists())
+
 
 class ACPTests(unittest.TestCase):
     def setUp(self):

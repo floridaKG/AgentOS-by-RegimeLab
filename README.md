@@ -49,14 +49,60 @@ cd AgentOS-by-RegimeLab
 source ~/.config/agent-os/config.env
 ```
 
+For a one-line install into `~/.local/share/agent-os`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/floridaKG/AgentOS-by-RegimeLab/main/bootstrap.sh | bash
+```
+
+The bootstrapper clones the repository, runs the idempotent installer, and
+prints a setup report. Review the script or pin a release tag when supply-chain
+control matters.
+
 **Minimum requirements:** Python 3.10+, Git, Bash. Linux and WSL2 are tested.
-macOS is not verified for v1 claims. No Node.js, no hosted services, and no
+ACP and ACPx are cross-platform in principle, but this Agent OS distribution's
+full daemon and shell workflow integration is currently verified only on Linux
+and WSL2. macOS is not verified for v1 claims. No Node.js, hosted services, or
 API keys are required for the local core.
+
+### Primary CLI path
+
+```bash
+agent-os init
+agent-os doctor
+agent-os memory add "Agent OS local core write/recall smoke test"
+agent-os memory search "local core write/recall smoke test"
+```
+
+The unified CLI is the recommended shell interface. Existing `memory-*`
+commands remain available for compatibility.
+
+### MCP Server (optional)
+
+Agent OS includes a local MCP server for memory and diagnostics:
+
+```bash
+# Start the MCP server
+agent-os mcp serve
+
+# Install MCP config for Claude
+agent-os mcp install --client claude
+
+# Install MCP config for Codex
+agent-os mcp install --client codex
+
+# Install MCP config for OpenCode
+agent-os mcp install --client opencode
+```
+
+See [docs/MCP.md](docs/MCP.md) for full documentation.
 
 ### Prove memory works (write → recall)
 
 ```bash
-echo "Agent OS local core write/recall smoke test — unique $(date +%s)" > /tmp/aos-smoke.txt
+SMOKE_FILE="$AGENT_OS_HOME/.local/state/agent-os/aos-smoke.txt"
+mkdir -p "$(dirname "$SMOKE_FILE")"
+echo "Agent OS local core write/recall smoke test — unique $(date +%s)" > "$SMOKE_FILE"
 
 memory-st write \
   --run-id "quickstart-$(date +%s)" \
@@ -65,7 +111,7 @@ memory-st write \
   --intent LESSON \
   --kind observation \
   --summary "Agent OS local core write/recall smoke test" \
-  --content-file /tmp/aos-smoke.txt \
+  --content-file "$SMOKE_FILE" \
   --source-ref "readme:quickstart"
 
 memory-recall --text "local core write/recall smoke test" --tier short_term
@@ -175,8 +221,8 @@ The local core does not phone home. Provider API keys you add stay in your
 
 **Video overview (~5 minutes):**  
 [docs/assets/video/overview.mp4](docs/assets/video/overview.mp4) — wiki-style
-tour of the system. Not a product demo of adversarial review or private
-cockpit features.
+tour of the system. Not a product demo of unreleased or maintainer-only
+features.
 
 ---
 
@@ -196,7 +242,8 @@ cockpit features.
 
 ## Known limitations
 
-- Linux / WSL2 tested; macOS not verified for v1 claims  
+- Linux / WSL2 tested for the full harness; ACP/ACPx are not inherently Linux-only
+- macOS ACPx use may work, but the Agent OS daemon and shell workflows are not verified for v1 claims
 - Multi-agent dispatch and MOE need your agent CLIs, models, and often ACPx  
 - Memory injection and optional backends are configuration-dependent  
 - CI covers privacy/history gates and selected tests — not a full product SLA  

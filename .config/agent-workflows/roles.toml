@@ -1,6 +1,8 @@
 # Portable agent workflow role assignments.
 # Replace provider/model values with IDs advertised by your installed CLIs.
-# Supported providers: opencode, codex, claude
+# Providers are setup-driven. Built-in examples include opencode, codex,
+# claude, droid, pi, hermes, cline, omp, cursor, and grok. Add any ACPx
+# compatible profile by using its name here.
 
 [explorer]
 model = "default"

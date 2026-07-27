@@ -1,10 +1,126 @@
 # Public Agent OS MCP servers registry.
 # Only MCP servers available to public users are listed here.
 # Private or owner-specific MCP servers are not included.
-# Last rebuilt: 2026-06-25
+# Last rebuilt: 2026-07-26
 
 # MCP (Model Context Protocol) servers extend agent capabilities with
 # external tool integrations. To add an MCP server, add an entry below
 # with the server name, description, tools, and configuration.
 
-mcp_servers: []
+mcp_servers:
+  - name: agent-os
+    version: 1.0.0
+    description: >
+      Local stdio MCP server for Agent OS memory and diagnostics.
+      Provides memory search, write, list, and health checks, plus
+      comprehensive diagnostics and capability reporting.
+      No cloud credentials required.
+    transport: stdio
+    launcher: agent-os-mcp
+    alternative_launchers:
+      - "agent-os mcp serve"
+    supported_clients:
+      - claude-code
+      - codex-cli
+      - opencode
+    environment_variables: []
+    requires_cloud_credentials: false
+    tools:
+      - name: memory_search
+        description: >
+          Search memory records using full-text search. Returns structured
+          records with IDs, summaries, content, intent, timestamps, and source
+          references. Does not return secrets or unrestricted environment contents.
+        inputs:
+          - name: text
+            type: string
+            required: true
+            description: Search query text
+          - name: tier
+            type: string
+            required: false
+            default: short_term
+            description: Memory tier
+          - name: limit
+            type: integer
+            required: false
+            default: 10
+            description: Maximum results (max 100)
+      - name: memory_write
+        description: >
+          Add a memory record to the short-term store. Only summary and content
+          are required. Other fields receive safe defaults equivalent to CLI behavior.
+        inputs:
+          - name: summary
+            type: string
+            required: true
+            description: Brief summary of the memory
+          - name: content
+            type: string
+            required: true
+            description: Full content text
+          - name: intent
+            type: string
+            required: false
+            default: LESSON
+            description: Intent category
+          - name: kind
+            type: string
+            required: false
+            default: observation
+            description: Record kind
+          - name: workspace
+            type: string
+            required: false
+            default: default
+            description: Workspace name
+          - name: agent_id
+            type: string
+            required: false
+            default: user
+            description: Agent identifier
+          - name: run_id
+            type: string
+            required: false
+            description: Run identifier (auto-generated if omitted)
+          - name: source_ref
+            type: string
+            required: false
+            default: mcp:agent-os
+            description: Source reference
+      - name: memory_list
+        description: >
+          List memory records with optional filters. All filters are optional.
+          Results are bounded by default and maximum limits.
+        inputs:
+          - name: intent
+            type: string
+            required: false
+            description: Filter by intent (e.g., LESSON, STUMBLE)
+          - name: workspace
+            type: string
+            required: false
+            description: Filter by workspace name
+          - name: limit
+            type: integer
+            required: false
+            default: 20
+            description: Maximum results (max 200)
+      - name: memory_health
+        description: >
+          Check the health of the local memory subsystem. Returns database
+          reachability, schema status, configured tier status, state path,
+          and actionable remediation. Does not include credential values.
+        inputs: []
+      - name: agent_os_doctor
+        description: >
+          Run comprehensive diagnostic checks. Verifies installation, state
+          directories, Python dependencies, registries, memory readiness,
+          and optional services.
+        inputs: []
+      - name: capabilities
+        description: >
+          Return the Agent OS version, platform support, and enabled features.
+          Includes version, platform support declaration, enabled local features,
+          optional backend availability, and MCP server version.
+        inputs: []

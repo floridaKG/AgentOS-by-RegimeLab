@@ -63,10 +63,7 @@ NATIVE_JSON_COMMANDS: set[tuple[str, ...]] = {
     ("memory", "health"),
     ("memory", "lifecycle"),
     ("skill", "rank"),
-    ("acp", "wait"),
     ("acp", "health"),
-    ("acp", "presence"),
-    ("acp", "tail"),
     ("registry", "check"),
     ("quality", "gates"),
     ("stumble", "propose"),
@@ -194,19 +191,6 @@ def die(message: str, exit_code: int = EXIT_USAGE) -> None:
     sys.exit(exit_code)
 
 
-# ── Doctor ─────────────────────────────────────────────────────────────────
-
-
-def cmd_doctor(args: argparse.Namespace) -> None:
-    """One-verdict health check: drift, reachability, distribution, memory."""
-    script = "scripts/agent-os-doctor.sh"
-    extra = []
-    if args.quiet:
-        extra.append("--quiet")
-    rc, out = run(script, extra, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(rc, out, json_mode=args.json, command_path=("doctor",), quiet=args.quiet)
-
-
 # ── Health / Status ────────────────────────────────────────────────────────
 
 
@@ -250,19 +234,6 @@ def cmd_sync_check(args: argparse.Namespace) -> None:
     handle_output(rc, out, json_mode=args.json, command_path=("sync-check",), quiet=args.quiet)
 
 
-# ── Render ──────────────────────────────────────────────────────────────────
-
-
-def cmd_render(args: argparse.Namespace) -> None:
-    """Regenerate INDEX.md from registries + on-disk scan."""
-    script = "scripts/render-index.py"
-    cmd_args = []
-    if args.dry_run:
-        cmd_args.append("--dry-run")
-    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(rc, out, json_mode=args.json, command_path=("render",), quiet=args.quiet)
-
-
 # ── ACP Subsystem ───────────────────────────────────────────────────────────
 
 
@@ -280,38 +251,6 @@ def cmd_acp_send(args: argparse.Namespace) -> None:
     handle_output(rc, out, json_mode=args.json, command_path=("acp", "send"), quiet=args.quiet)
 
 
-def cmd_acp_status(args: argparse.Namespace) -> None:
-    """Check ACP run status."""
-    script = str(BIN_DIR / "acp-status")
-    cmd_args = []
-    if args.run_id:
-        cmd_args.append(args.run_id)
-    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(rc, out, json_mode=args.json, command_path=("acp", "status"), quiet=args.quiet)
-
-
-def cmd_acp_wait(args: argparse.Namespace) -> None:
-    """Wait for an ACP run to complete."""
-    script = str(BIN_DIR / "acp-wait")
-    cmd_args = [args.run_id]
-    if args.timeout:
-        cmd_args.extend(["--timeout", str(args.timeout)])
-    if args.json:
-        cmd_args.append("--json")
-    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(rc, out, json_mode=args.json, command_path=("acp", "wait"), quiet=args.quiet)
-
-
-def cmd_acp_cancel(args: argparse.Namespace) -> None:
-    """Cancel an ACP run."""
-    script = str(BIN_DIR / "acp-cancel")
-    cmd_args = [args.run_id]
-    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(
-        rc, out, json_mode=args.json, command_path=("acp", "cancel"), quiet=args.quiet
-    )
-
-
 def cmd_acp_health(args: argparse.Namespace) -> None:
     """Report ACP daemon health."""
     script = str(BIN_DIR / "acp-health")
@@ -324,50 +263,6 @@ def cmd_acp_health(args: argparse.Namespace) -> None:
     handle_output(
         rc, out, json_mode=args.json, command_path=("acp", "health"), quiet=args.quiet
     )
-
-
-def cmd_acp_fleet(args: argparse.Namespace) -> None:
-    """Structural fleet dispatchability check."""
-    script = str(BIN_DIR / "acp-fleet-check")
-    cmd_args = []
-    if args.verbose:
-        cmd_args.append("--probe")
-    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(
-        rc, out, json_mode=args.json, command_path=("acp", "fleet"), quiet=args.quiet
-    )
-
-
-def cmd_acp_presence(args: argparse.Namespace) -> None:
-    """PS-style view of running ACP agents."""
-    script = str(BIN_DIR / "acp-presence")
-    cmd_args = []
-    if args.json:
-        cmd_args.append("--json")
-    if args.watch:
-        cmd_args.append("--watch")
-    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(
-        rc, out, json_mode=args.json, command_path=("acp", "presence"), quiet=args.quiet
-    )
-
-
-def cmd_acp_tail(args: argparse.Namespace) -> None:
-    """Stream/filter ACP event ledger."""
-    script = str(BIN_DIR / "acp-tail")
-    cmd_args = []
-    if args.limit:
-        cmd_args.extend(["--limit", str(args.limit)])
-    if args.follow:
-        cmd_args.append("--follow")
-    if args.state:
-        cmd_args.extend(["--state", args.state])
-    if args.run_id:
-        cmd_args.extend(["--run-id", args.run_id])
-    if args.json:
-        cmd_args.append("--json")
-    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(rc, out, json_mode=args.json, command_path=("acp", "tail"), quiet=args.quiet)
 
 
 # ── Memory Subsystem ────────────────────────────────────────────────────────
@@ -437,20 +332,6 @@ def cmd_memory_promote(args: argparse.Namespace) -> None:
     )
 
 
-def cmd_memory_inject(args: argparse.Namespace) -> None:
-    """Inject memory context into an agent packet."""
-    script = str(BIN_DIR / "memory-inject")
-    cmd_args = [args.packet]
-    if args.dry_run:
-        cmd_args.append("--dry-run")
-    if args.token_budget:
-        cmd_args.extend(["--token-budget", str(args.token_budget)])
-    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(
-        rc, out, json_mode=args.json, command_path=("memory", "inject"), quiet=args.quiet
-    )
-
-
 def cmd_memory_lifecycle(args: argparse.Namespace) -> None:
     """Cross-tier stale detection and lifecycle management."""
     script = "scripts/memory-lifecycle.py"
@@ -458,20 +339,6 @@ def cmd_memory_lifecycle(args: argparse.Namespace) -> None:
     rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
     handle_output(
         rc, out, json_mode=args.json, command_path=("memory", "lifecycle"), quiet=args.quiet
-    )
-
-
-def cmd_memory_digest(args: argparse.Namespace) -> None:
-    """Show recent memory across all tiers."""
-    script = "scripts/digest.sh"
-    cmd_args = []
-    if args.window:
-        cmd_args.append(args.window)
-    if args.keyword:
-        cmd_args.append(args.keyword)
-    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(
-        rc, out, json_mode=args.json, command_path=("memory", "digest"), quiet=args.quiet
     )
 
 
@@ -519,41 +386,6 @@ def cmd_skill_context(args: argparse.Namespace) -> None:
     rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
     handle_output(
         rc, out, json_mode=args.json, command_path=("skill", "context"), quiet=args.quiet
-    )
-
-
-def cmd_skill_sync(args: argparse.Namespace) -> None:
-    """Sync skills across all camps."""
-    script = "scripts/skills-sync.sh"
-    cmd_args = []
-    if args.check:
-        cmd_args.append("--check")
-    if args.push:
-        cmd_args.append("--push")
-    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(
-        rc, out, json_mode=args.json, command_path=("skill", "sync"), quiet=args.quiet
-    )
-
-
-def cmd_skill_health(args: argparse.Namespace) -> None:
-    """Skill health review — list, review, or sweep."""
-    script = str(BIN_DIR / "skill-health")
-    cmd_args = [args.action]
-    if args.json:
-        cmd_args.append("--json")
-    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(
-        rc, out, json_mode=args.json, command_path=("skill", "health"), quiet=args.quiet
-    )
-
-
-def cmd_skill_index(args: argparse.Namespace) -> None:
-    """Index SKILL.md files into Pinecone."""
-    script = "scripts/skills-index.py"
-    rc, out = run(script, [], json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(
-        rc, out, json_mode=args.json, command_path=("skill", "index"), quiet=args.quiet
     )
 
 
@@ -620,15 +452,6 @@ def cmd_stumble_apply(args: argparse.Namespace) -> None:
     )
 
 
-def cmd_stumble_digest(args: argparse.Namespace) -> None:
-    """Daily stumble digest."""
-    script = "scripts/stumble-digest.sh"
-    rc, out = run(script, [], json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(
-        rc, out, json_mode=args.json, command_path=("stumble", "digest"), quiet=args.quiet
-    )
-
-
 def cmd_stumble_cleanup(args: argparse.Namespace) -> None:
     """Clean up old triage reports."""
     script = "scripts/stumble-cleanup.py"
@@ -692,89 +515,6 @@ def cmd_quality_gates(args: argparse.Namespace) -> None:
     )
 
 
-# ── Vault Subsystem ─────────────────────────────────────────────────────────
-
-
-def cmd_vault_reindex(args: argparse.Namespace) -> None:
-    """Reindex knowledge vault to Pinecone."""
-    script = "scripts/vault-reindex.sh"
-    cmd_args = ["reindex"]
-    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(
-        rc, out, json_mode=args.json, command_path=("vault", "reindex"), quiet=args.quiet
-    )
-
-
-def cmd_vault_status(args: argparse.Namespace) -> None:
-    """Vault index status."""
-    script = "scripts/vault-reindex.sh"
-    cmd_args = ["status"]
-    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(
-        rc, out, json_mode=args.json, command_path=("vault", "status"), quiet=args.quiet
-    )
-
-
-def cmd_vault_search(args: argparse.Namespace) -> None:
-    """Semantic search of the knowledge vault."""
-    script = "scripts/vault-reindex.sh"
-    cmd_args = ["search", args.query]
-    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(
-        rc, out, json_mode=args.json, command_path=("vault", "search"), quiet=args.quiet
-    )
-
-
-# ── Docs Subsystem ──────────────────────────────────────────────────────────
-
-
-def cmd_docs_index(args: argparse.Namespace) -> None:
-    """Index agent-os-docs into Pinecone for semantic retrieval."""
-    script = "scripts/docs_index.py"
-    cmd_args = [args.action]
-    if args.query:
-        cmd_args.append(args.query)
-    if args.json:
-        cmd_args.append("--json")
-    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(
-        rc, out, json_mode=args.json, command_path=("docs", "index"), quiet=args.quiet
-    )
-
-
-def cmd_docs_health(args: argparse.Namespace) -> None:
-    """Verify agent-os-docs claims against live system state."""
-    script = "scripts/doc-health-check.py"
-    rc, out = run(script, [], json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(
-        rc, out, json_mode=args.json, command_path=("docs", "health"), quiet=args.quiet
-    )
-
-
-# ── Cron Subsystem ──────────────────────────────────────────────────────────
-
-
-def cmd_cron_health(args: argparse.Namespace) -> None:
-    """Validate Agent OS cron fleet."""
-    script = "scripts/cron-health-check.py"
-    rc, out = run(script, [], json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(
-        rc, out, json_mode=args.json, command_path=("cron", "health"), quiet=args.quiet
-    )
-
-
-def cmd_cron_catchup(args: argparse.Namespace) -> None:
-    """Run overdue cron jobs after WSL boot."""
-    script = "scripts/cron-catchup.sh"
-    cmd_args = []
-    if args.dry_run:
-        cmd_args.append("--dry-run")
-    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(
-        rc, out, json_mode=args.json, command_path=("cron", "catchup"), quiet=args.quiet
-    )
-
-
 # ── Voice Subsystem ─────────────────────────────────────────────────────────
 
 
@@ -804,62 +544,6 @@ def cmd_voice_list(args: argparse.Namespace) -> None:
     )
 
 
-def cmd_voice_show(args: argparse.Namespace) -> None:
-    """Show a specific Agent Voice insight."""
-    script = str(BIN_DIR / "agent-voice")
-    cmd_args = ["show", args.id]
-    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(
-        rc, out, json_mode=args.json, command_path=("voice", "show"), quiet=args.quiet
-    )
-
-
-# ── Handoff Subsystem ───────────────────────────────────────────────────────
-
-
-def cmd_handoff_lint(args: argparse.Namespace) -> None:
-    """Check active handoffs for staleness."""
-    script = str(BIN_DIR / "handoff-lint")
-    cmd_args = []
-    if args.stale:
-        cmd_args.append("--stale")
-    if args.root:
-        cmd_args.extend(["--root", args.root])
-    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(
-        rc, out, json_mode=args.json, command_path=("handoff", "lint"), quiet=args.quiet
-    )
-
-
-def cmd_handoff_boot(args: argparse.Namespace) -> None:
-    """Handoff lifecycle boot protocol."""
-    script = str(BIN_DIR / "handoff-lifecycle-boot.sh")
-    cmd_args = []
-    if args.apply:
-        cmd_args.append("--apply")
-    if args.root:
-        cmd_args.extend(["--root", args.root])
-    if args.quiet:
-        cmd_args.append("--quiet")
-    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(
-        rc, out, json_mode=args.json, command_path=("handoff", "boot"), quiet=args.quiet
-    )
-
-
-# ── Research ────────────────────────────────────────────────────────────────
-
-
-def cmd_research_collect(args: argparse.Namespace) -> None:
-    """Bounded research fetch with allow-list."""
-    script = "scripts/research_collector.py"
-    cmd_args = [args.query]
-    rc, out = run(script, cmd_args, json_mode=args.json, quiet=args.quiet, verbose=args.verbose)
-    handle_output(
-        rc, out, json_mode=args.json, command_path=("research", "collect"), quiet=args.quiet
-    )
-
-
 # ── Subcommand Builders ─────────────────────────────────────────────────────
 
 
@@ -880,12 +564,6 @@ def add_global_flags(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Show detailed command output",
     )
-
-
-def build_doctor(sub) -> None:
-    p = sub.add_parser("doctor", help="One-verdict health check", description=cmd_doctor.__doc__)
-    add_global_flags(p)
-    p.set_defaults(func=cmd_doctor)
 
 
 def build_health(sub) -> None:
@@ -913,13 +591,6 @@ def build_sync_check(sub) -> None:
     p.set_defaults(func=cmd_sync_check)
 
 
-def build_render(sub) -> None:
-    p = sub.add_parser("render", help="Regenerate INDEX.md from registries", description=cmd_render.__doc__)
-    p.add_argument("--dry-run", action="store_true", help="Preview changes to stdout without writing")
-    add_global_flags(p)
-    p.set_defaults(func=cmd_render)
-
-
 def build_acp(sub) -> None:
     p = sub.add_parser("acp", help="ACP dispatch & monitoring", description="Send, monitor, and manage ACP tasks.")
     add_global_flags(p)
@@ -936,50 +607,10 @@ def build_acp(sub) -> None:
     add_global_flags(sp)
     sp.set_defaults(func=cmd_acp_send)
 
-    # acp status
-    sp = acp_sub.add_parser("status", help="Check ACP run status", description=cmd_acp_status.__doc__)
-    sp.add_argument("run_id", nargs="?", help="Run ID to check")
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_acp_status)
-
-    # acp wait
-    sp = acp_sub.add_parser("wait", help="Wait for ACP run completion", description=cmd_acp_wait.__doc__)
-    sp.add_argument("run_id", help="Run ID to wait for")
-    sp.add_argument("--timeout", type=int, default=300, help="Timeout in seconds")
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_acp_wait)
-
-    # acp cancel
-    sp = acp_sub.add_parser("cancel", help="Cancel an ACP run", description=cmd_acp_cancel.__doc__)
-    sp.add_argument("run_id", help="Run ID to cancel")
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_acp_cancel)
-
     # acp health
     sp = acp_sub.add_parser("health", help="ACP daemon health", description=cmd_acp_health.__doc__)
     add_global_flags(sp)
     sp.set_defaults(func=cmd_acp_health)
-
-    # acp fleet
-    sp = acp_sub.add_parser("fleet", help="Fleet dispatchability check", description=cmd_acp_fleet.__doc__)
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_acp_fleet)
-
-    # acp presence
-    sp = acp_sub.add_parser("presence", help="Running ACP agents", description=cmd_acp_presence.__doc__)
-    sp.add_argument("--watch", action="store_true", help="Watch mode (continuous)")
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_acp_presence)
-
-    # acp tail
-    sp = acp_sub.add_parser("tail", help="Stream/filter ACP event ledger", description=cmd_acp_tail.__doc__)
-    sp.add_argument("--limit", type=int, default=20, help="Number of events")
-    sp.add_argument("-f", "--follow", action="store_true", help="Stream events")
-    sp.add_argument("--state", help="Filter by state")
-    sp.add_argument("--run-id", help="Filter by run ID")
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_acp_tail)
-
 
 def build_memory(sub) -> None:
     p = sub.add_parser("memory", help="Memory operations", description="Search, manage, and monitor Agent OS memory tiers.")
@@ -1012,29 +643,14 @@ def build_memory(sub) -> None:
     add_global_flags(sp)
     sp.set_defaults(func=cmd_memory_promote)
 
-    # memory inject
-    sp = mem_sub.add_parser("inject", help="Inject memory context", description=cmd_memory_inject.__doc__)
-    sp.add_argument("packet", help="Context packet text")
-    sp.add_argument("--dry-run", action="store_true", help="Preview only")
-    sp.add_argument("--token-budget", type=int, help="Token budget for injection")
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_memory_inject)
-
     # memory lifecycle
     sp = mem_sub.add_parser("lifecycle", help="Cross-tier stale detection", description=cmd_memory_lifecycle.__doc__)
     add_global_flags(sp)
     sp.set_defaults(func=cmd_memory_lifecycle)
 
-    # memory digest
-    sp = mem_sub.add_parser("digest", help="Recent memory summary", description=cmd_memory_digest.__doc__)
-    sp.add_argument("window", nargs="?", default="7d", help="Time window (7d, 30d, 90d, all)")
-    sp.add_argument("keyword", nargs="?", help="Filter keyword")
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_memory_digest)
-
 
 def build_skill(sub) -> None:
-    p = sub.add_parser("skill", help="Skills management", description="Rank, pack, sync, index, and review Agent OS skills.")
+    p = sub.add_parser("skill", help="Skills management", description="Rank, pack, and inject Agent OS skills.")
     add_global_flags(p)
     sk_sub = p.add_subparsers(dest="skill_command", metavar="<command>", required=True)
 
@@ -1061,24 +677,6 @@ def build_skill(sub) -> None:
     sp.add_argument("budget", nargs="?", type=int, help="Token budget")
     add_global_flags(sp)
     sp.set_defaults(func=cmd_skill_context)
-
-    # skill sync
-    sp = sk_sub.add_parser("sync", help="Sync skills across camps", description=cmd_skill_sync.__doc__)
-    sp.add_argument("--check", action="store_true", help="Check sync status")
-    sp.add_argument("--push", action="store_true", help="Push changes across camps")
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_skill_sync)
-
-    # skill health
-    sp = sk_sub.add_parser("health", help="Skill health review", description=cmd_skill_health.__doc__)
-    sp.add_argument("action", choices=["list", "review", "sweep"], help="Health action")
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_skill_health)
-
-    # skill index
-    sp = sk_sub.add_parser("index", help="Index skills to Pinecone", description=cmd_skill_index.__doc__)
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_skill_index)
 
 
 def build_stumble(sub) -> None:
@@ -1113,11 +711,6 @@ def build_stumble(sub) -> None:
     sp.add_argument("--fingerprint", help="Apply specific fingerprint")
     add_global_flags(sp)
     sp.set_defaults(func=cmd_stumble_apply)
-
-    # stumble digest
-    sp = st_sub.add_parser("digest", help="Daily stumble digest", description=cmd_stumble_digest.__doc__)
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_stumble_digest)
 
     # stumble cleanup
     sp = st_sub.add_parser("cleanup", help="Clean old triage reports", description=cmd_stumble_cleanup.__doc__)
@@ -1157,58 +750,8 @@ def build_quality(sub) -> None:
     sp.set_defaults(func=cmd_quality_gates)
 
 
-def build_vault(sub) -> None:
-    p = sub.add_parser("vault", help="Knowledge vault", description="Manage the Agent OS knowledge vault.")
-    add_global_flags(p)
-    v_sub = p.add_subparsers(dest="vault_command", metavar="<command>", required=True)
-
-    sp = v_sub.add_parser("reindex", help="Reindex vault to Pinecone", description=cmd_vault_reindex.__doc__)
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_vault_reindex)
-
-    sp = v_sub.add_parser("status", help="Vault index status", description=cmd_vault_status.__doc__)
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_vault_status)
-
-    sp = v_sub.add_parser("search", help="Semantic vault search", description=cmd_vault_search.__doc__)
-    sp.add_argument("query", help="Search query")
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_vault_search)
-
-
-def build_docs(sub) -> None:
-    p = sub.add_parser("docs", help="Documentation operations", description="Index and verify Agent OS documentation.")
-    add_global_flags(p)
-    d_sub = p.add_subparsers(dest="docs_command", metavar="<command>", required=True)
-
-    sp = d_sub.add_parser("index", help="Index docs to Pinecone", description=cmd_docs_index.__doc__)
-    sp.add_argument("action", choices=["reindex", "status", "search"], help="Doc index action")
-    sp.add_argument("query", nargs="?", help="Search query (for search action)")
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_docs_index)
-
-    sp = d_sub.add_parser("health", help="Verify doc claims", description=cmd_docs_health.__doc__)
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_docs_health)
-
-
-def build_cron(sub) -> None:
-    p = sub.add_parser("cron", help="Cron fleet operations", description="Manage and monitor the Agent OS cron fleet.")
-    add_global_flags(p)
-    c_sub = p.add_subparsers(dest="cron_command", metavar="<command>", required=True)
-
-    sp = c_sub.add_parser("health", help="Validate cron fleet", description=cmd_cron_health.__doc__)
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_cron_health)
-
-    sp = c_sub.add_parser("catchup", help="Run overdue cron jobs", description=cmd_cron_catchup.__doc__)
-    sp.add_argument("--dry-run", action="store_true", help="Preview without running")
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_cron_catchup)
-
-
 def build_voice(sub) -> None:
-    p = sub.add_parser("voice", help="Agent Voice insights", description="Emit, list, and show Agent Voice insights.")
+    p = sub.add_parser("voice", help="Agent Voice insights", description="Emit and list Agent Voice insights.")
     add_global_flags(p)
     vo_sub = p.add_subparsers(dest="voice_command", metavar="<command>", required=True)
 
@@ -1221,40 +764,6 @@ def build_voice(sub) -> None:
     add_global_flags(sp)
     sp.set_defaults(func=cmd_voice_list)
 
-    sp = vo_sub.add_parser("show", help="Show insight detail", description=cmd_voice_show.__doc__)
-    sp.add_argument("id", help="Insight ID")
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_voice_show)
-
-
-def build_handoff(sub) -> None:
-    p = sub.add_parser("handoff", help="Handoff lifecycle", description="Lint and manage handoff lifecycle.")
-    add_global_flags(p)
-    h_sub = p.add_subparsers(dest="handoff_command", metavar="<command>", required=True)
-
-    sp = h_sub.add_parser("lint", help="Check handoff staleness", description=cmd_handoff_lint.__doc__)
-    sp.add_argument("--stale", action="store_true", help="Show only stale handoffs")
-    sp.add_argument("--root", help="Handoff root directory")
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_handoff_lint)
-
-    sp = h_sub.add_parser("boot", help="Handoff lifecycle boot protocol", description=cmd_handoff_boot.__doc__)
-    sp.add_argument("--apply", action="store_true", help="Apply pending handoff actions")
-    sp.add_argument("--root", help="Handoff root directory")
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_handoff_boot)
-
-
-def build_research(sub) -> None:
-    p = sub.add_parser("research", help="Research collection", description="Bounded research fetch with allow-list.")
-    add_global_flags(p)
-    r_sub = p.add_subparsers(dest="research_command", metavar="<command>", required=True)
-
-    sp = r_sub.add_parser("collect", help="Collect research on a topic", description=cmd_research_collect.__doc__)
-    sp.add_argument("query", help="Research query")
-    add_global_flags(sp)
-    sp.set_defaults(func=cmd_research_collect)
-
 
 # ── Main ────────────────────────────────────────────────────────────────────
 
@@ -1263,10 +772,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         prog="agent-os",
         description="Agent OS — unified CLI for the agent orchestration framework.\n"
-        "Dispatch to ~70+ scripts across 18 subsystems.\n"
         "\n"
         "Examples:\n"
-        "  agent-os doctor\n"
         "  agent-os health --json\n"
         "  agent-os memory recall \"boot protocol\"\n"
         "  agent-os acp send agent-os review \"Check the system\"\n"
@@ -1278,24 +785,17 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", metavar="<command>")
     sub.required = False
 
-    build_doctor(sub)
     build_health(sub)
     build_verify(sub)
     build_boot(sub)
     build_sync_check(sub)
-    build_render(sub)
     build_acp(sub)
     build_memory(sub)
     build_skill(sub)
     build_stumble(sub)
     build_registry(sub)
     build_quality(sub)
-    build_vault(sub)
-    build_docs(sub)
-    build_cron(sub)
     build_voice(sub)
-    build_handoff(sub)
-    build_research(sub)
 
     if len(sys.argv) <= 1:
         parser.print_help()

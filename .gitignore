@@ -1,5 +1,9 @@
 # Agent OS OSS - Build evidence and private state
 .ossbuild/
+.eggs/
+build/
+dist/
+*.egg-info/
 .video-agent-os/
 *.build-artifacts/
 *.stale
@@ -22,6 +26,10 @@ node_modules/
 .venv/
 droid-wiki/
 droid-wiki-new/
+
+# Local planning/spec artifacts are not part of the public release tree.
+specs/active/*
+!specs/active/.gitkeep
 
 # Credentials and secrets
 secrets.env

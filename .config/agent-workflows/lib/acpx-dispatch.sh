@@ -109,7 +109,14 @@ acpx_dispatch() {
                 # the generic ACP model extension.
                 model_to_apply="$model"
                 ;;
-            # opencode: config-only, no model flag
+            opencode)
+                # OpenCode selects its model from its own provider config.
+                ;;
+            *)
+                # Custom ACP agents may advertise generic model selection.
+                # Pass the configured model through and let ACPx validate it.
+                model_to_apply="$model"
+                ;;
         esac
     fi
 
@@ -329,8 +336,8 @@ for line in sys.stdin:
 
 _acpx_agent_for_provider() {
     case "$1" in
-        opencode|codex|claude|droid|pi|omp|cursor|cline|grok) printf '%s\n' "$1" ;;
-        *) return 2 ;;
+        ''|*[!a-zA-Z0-9._-]*) return 2 ;;
+        *) printf '%s\n' "$1" ;;
     esac
 }
 
