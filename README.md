@@ -1,5 +1,9 @@
 # Agent OS
 
+[![CI](https://github.com/floridaKG/AgentOS-by-RegimeLab/actions/workflows/ci.yml/badge.svg)](https://github.com/floridaKG/AgentOS-by-RegimeLab/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/floridaKG/AgentOS-by-RegimeLab/releases)
+[![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
+
 **A shared operating layer for AI coding agents** — local tools, conventions,
 skills, and optional routing that sit around the agent CLIs you already use.
 
