@@ -19,7 +19,26 @@ curl -fsSL https://raw.githubusercontent.com/floridaKG/AgentOS-by-RegimeLab/main
 This clones into `~/.local/share/agent-os`, runs the installer, and leaves the
 checkout available for ACP workflow installation. Pin a release tag or review
 the script first when supply-chain control is required. After installation,
-run `agent-os-setup` for provider and ACPx readiness checks.
+run `agent-os setup --check` for a headless gap report, or `agent-os-setup`
+for the human-readable readiness check.
+
+## Agent-driven setup (recommended)
+
+If you use Claude Code or any agent with shell access, you do not need to
+configure everything by hand. Point the agent at this repo and say
+**"set me up."** The agent follows the sequence in
+[docs/AGENT_SETUP.md](docs/AGENT_SETUP.md): it verifies the core install,
+installs rtk, ACPx, and CodeGraph, detects your agent CLIs, wires providers
+it finds in your environment, routes roles and workspaces, and verifies the
+result. Agent OS never collects API keys; Claude Code's own login is the
+credential for the Claude lane.
+
+- **Diagnostic:** `agent-os setup --check` prints a headless JSON gap report
+  (what is ready, what is missing, and the exact fix command for each gap).
+- **What stays manual:** account signups (Anthropic, and a provider for
+  open-source models such as OpenRouter or an OpenAI-compatible endpoint),
+  and interactive logins like `claude` or `codex` on a fresh machine.
+
 ## Prerequisites
 
 ### Required (Local Core)

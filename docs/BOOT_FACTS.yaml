@@ -36,5 +36,6 @@ memory_profiles:
 system_state:
   acp_daemon_running: false
   memory_health: UNKNOWN
+  setup_complete: false
   active_workspaces:
     - home ($AGENT_OS_HOME)

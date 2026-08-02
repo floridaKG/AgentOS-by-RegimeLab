@@ -199,6 +199,14 @@ check "memory-st init succeeds" bash -c "AGENT_OS_HOME='$STAGE' HOME='$CLEANROOM
 check "memory-st write succeeds" bash -c "AGENT_OS_HOME='$STAGE' HOME='$CLEANROOM_HOME' python3 '$STAGE/memory/core/short_term.py' write --run-id cleanroom-test --agent-id test-agent --workspace home --intent LESSON --kind observation --summary 'Clean room first-use test' --content-file /dev/stdin --source-ref cli:test <<< 'First use lesson content'"
 check "memory-st query finds written record" bash -c "AGENT_OS_HOME='$STAGE' HOME='$CLEANROOM_HOME' python3 '$STAGE/memory/core/short_term.py' query --text 'first-use' --limit 5 2>&1 | grep -q 'ok.*true'"
 
+# ── Step 16b: setup --check gap reporter (headless) ──
+echo ""
+echo "--- Step 16b: setup --check gap reporter ---"
+check "setup --check parses as JSON" bash -c "AGENT_OS_HOME='$STAGE' HOME='$CLEANROOM_HOME' python3 '$STAGE/scripts/agent-os-setup-check.py' --json-only > '$CLEANROOM_DIR/setup-check.json' 2>&1 && python3 -c 'import json,sys; json.load(open(sys.argv[1]))' '$CLEANROOM_DIR/setup-check.json'"
+check "setup --check reports setup_complete false" bash -c "grep -q '\"setup_complete\": false' '$CLEANROOM_DIR/setup-check.json'"
+check "setup --check reports roles unconfigured" bash -c "grep -qE '\"status\": \"(missing|placeholder)\"' '$CLEANROOM_DIR/setup-check.json'"
+check "agent-os setup --check wired path" bash -c "AGENT_OS_HOME='$STAGE' HOME='$CLEANROOM_HOME' bash '$STAGE/bin/agent-os-setup' --check >/dev/null 2>&1"
+
 # ── Cleanup ──
 echo ""
 echo "--- Cleanup ---"

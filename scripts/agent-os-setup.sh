@@ -3,6 +3,11 @@ set -euo pipefail
 
 AGENT_OS_HOME="${AGENT_OS_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
+# Headless gap reporter for agents and CI (never prompts, always exits 0)
+if [ "${1:-}" = "--check" ]; then
+  exec python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/agent-os-setup-check.py" "${@:2}"
+fi
+
 echo "=== Agent OS Setup Check ==="
 echo "Install: $AGENT_OS_HOME"
 echo ""

@@ -195,6 +195,7 @@ allowlist:
       - agent-os
       - agent-os-boot.sh
       - agent-os-setup.sh
+      - agent-os-setup-check.py
       - agent-os-health.sh
       - agent-os-verify.sh
       - memory-recall-safe.py
@@ -254,6 +255,7 @@ allowlist:
       - SYSTEM_ARCHITECTURE_SOURCE_OF_TRUTH.md
       - OPTIONAL_BACKENDS.md
       - GETTING_STARTED.md
+      - AGENT_SETUP.md
       - MCP.md
       - index.html
       - .nojekyll
@@ -266,6 +268,7 @@ allowlist:
       - launch/adversarial-readme-review.md
       - launch/claim-inventory.md
       - launch/cold-path-evidence.md
+      - launch/agent-setup-evidence.md
       - launch/x-article.md
 
   # --- Tests (shipped for user verification) ---

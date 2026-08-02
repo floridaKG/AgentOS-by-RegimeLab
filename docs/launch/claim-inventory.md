@@ -48,6 +48,7 @@ there are not treated as marketing unless linked from README.
 | `memory-st write` + `recall` | GETTING_STARTED | OK | Cold-path package 3 |
 | Optional Pinecone / Neo4j / Hindsight | README, OPTIONAL_BACKENDS | OK if “optional” | Keep opt-in wording |
 | ACP multi-agent dispatch works | README | QUALIFY | Needs ACPx + agent CLIs + config |
+| "Point your agent at the repo and say set me up" | README | QUALIFY (mechanism verified) | Mechanism proven: `docs/launch/agent-setup-evidence.md` (2026-08-02); accounts/logins remain user-side per Known Limitations |
 | MOE / team / redteam work | README | QUALIFY | Needs configured agent CLIs + keys |
 | “shared memory” / cross-agent learning default | README hero | QUALIFY | Shared only if agents share store + conventions |
 | “On startup, its memory is injected” | README narrative | QUALIFY | Injection is opt-in hook setup |

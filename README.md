@@ -63,6 +63,19 @@ The bootstrapper clones the repository, runs the idempotent installer, and
 prints a setup report. Review the script or pin a release tag when supply-chain
 control matters.
 
+### Agent-driven setup (recommended)
+
+If you use Claude Code (or any agent with shell access), point it at this repo
+and say **"set me up."** The agent installs rtk, ACPx, and CodeGraph, detects
+your agent CLIs, wires the providers it finds in your environment, routes your
+roles and workspaces, and verifies the result - using the auth you already
+have. Agent OS never collects API keys; Claude Code's own login is the
+credential for the Claude lane.
+
+- Sequence the agent follows: [docs/AGENT_SETUP.md](docs/AGENT_SETUP.md)
+- Diagnostic: `agent-os setup --check` (headless JSON gap report: what is
+  ready, what is missing, and the exact fix command for each gap)
+
 **Minimum requirements:** Python 3.10+, Git, Bash. Linux and WSL2 are tested.
 ACP and ACPx are cross-platform in principle, but this Agent OS distribution's
 full daemon and shell workflow integration is currently verified only on Linux
@@ -252,6 +265,7 @@ features.
 - Memory injection and optional backends are configuration-dependent  
 - CI covers privacy/history gates and selected tests — not a full product SLA  
 - Open-core: hosted memory, managed governance, and enterprise controls are commercial plane (see commercial boundary)
+- Agent-driven setup cannot create accounts: Claude access and a provider for open-source models (OpenRouter or an OpenAI-compatible endpoint) are yours to obtain. Interactive logins (`claude`, `codex`) are completed by you after the agent triggers them.
 
 ## License
 

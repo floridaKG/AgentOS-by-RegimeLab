@@ -20,6 +20,14 @@ echo "════════════════════════�
 echo "        🛡️  Agent OS — Boot Sequence"
 echo "═════════════════════════════════════════════════════"
 
+# ── First-run detection ────────────────────────────────────
+if [ -n "${AGENT_OS_HOME:-}" ] && [ ! -f "${AGENT_OS_HOME}/.local/state/agent-os/setup-complete" ]; then
+  echo ""
+  echo "  ⚡ FIRST RUN: Agent OS is installed but not configured."
+  echo "     Follow docs/AGENT_SETUP.md to complete setup (rtk, ACPx, agents, roles)."
+  echo "     Quick diagnostic: agent-os setup --check"
+fi
+
 # ── Secrets check ─────────────────────────────────────────────
 if [[ -f "${HOME}/.config/agent-os/secrets.env" ]]; then
   set -a; source "${HOME}/.config/agent-os/secrets.env" 2>/dev/null || true; set +a
